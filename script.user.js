@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript
 // @namespace http://tampermonkey.net/
-// @version 0.1.5
+// @version 0.1.6
 // @description Apply custom styles to JPDB pages, replace deck list on learn page, and style buttons
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -115,9 +115,26 @@
             input[type='text'],
             input[type='url'],
             select {
-                border-radius: 9999px !important;
+                border-radius: 9999px;
             }
             
+            .accordion:has(input[type='text']) input[type='text'] {
+                border-radius: 0.5rem;
+                padding: 0.15em 0.75em;
+            }
+
+            .accordion > div > form > div:nth-child(1) {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+
+            .accordion:has(.form-row) .form-row {
+                // flex align right
+                display: flex;
+                justify-content: flex-end;
+            }
+
             textarea {
                 border-radius: 1rem !important;
             }
