@@ -49,8 +49,8 @@
                 --input-box-shadow-color: #0d1518;
                 --scrollbar-color: #3bdfac;
                 --scrollbar-background-color: #0d1518;
-                --mnemonic-main: #1a3b33;
-                --mnemonic-component: #1e2a30;
+                --mnemonic-main: #1a9e75;
+                --mnemonic-component: #0a3d2d;
                 --background-button-border-color: #2a3a42;
                 --big-shadow-color: #0a1114;
                 --progress-bar-background: #1e2a30;
