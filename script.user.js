@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript
 // @namespace http://tampermonkey.net/
-// @version 0.1.7
+// @version 0.1.8
 // @description Apply custom styles to JPDB pages, replace deck list on learn page, and style buttons
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -184,13 +184,17 @@
             #search-bar-lang {
                 position: absolute;
                 top: 0;
-                right: 2.5em;
-                margin: 0;
+                right: 1em;
                 padding: 0;
+                width: 5em !important;
                 border: none;
                 background-color: transparent;
                 box-shadow: none;
                 z-index: 2;
+            }
+
+            #search-bar-lang > option {
+                text-align: center;
             }
 
             :has(#search-bar-lang) > input {
