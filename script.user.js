@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript
 // @namespace http://tampermonkey.net/
-// @version 0.1.2
+// @version 0.1.3
 // @description Apply custom styles to JPDB pages, replace deck list on learn page, and style buttons
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -130,12 +130,24 @@
                 border-radius: 1rem !important;
             }
             
-            [style*='border-radius: 4px'] {
+            [style*='border-radius: 4px'],
+            [style*='border-radius:4px'],
+            [style*='border-radius: 8px'],
+            [style*='border-radius:8px'] {
                 border-radius: 1rem !important;
             }
             
+            .ranking-entry {
+                border-radius: 1rem !important;
+            }
+
+            .message-box, .error-box {
+                border-radius: 1rem !important;
+            }
+
             .search .result,
             .dropdown .dropdown-content,
+            .dropdown summary,
             .accordion,
             fieldset {
                 border-radius: 1rem !important;
