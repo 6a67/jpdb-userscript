@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript
 // @namespace http://tampermonkey.net/
-// @version 0.1.4
+// @version 0.1.5
 // @description Apply custom styles to JPDB pages, replace deck list on learn page, and style buttons
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -54,7 +54,7 @@
                 --background-button-border-color: #2a3a42;
                 --big-shadow-color: #0a1114;
                 --progress-bar-background: #1e2a30;
-                --progress-bar-foreground: linear-gradient(#2a7d66, #269d75);
+                --progress-bar-foreground: linear-gradient(#269d75, #2a7d66);
                 --progress-bar-in-progress: #2a3a42;
                 --review-button-group-border: #2a3a42;
             
