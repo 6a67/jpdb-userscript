@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript
 // @namespace http://tampermonkey.net/
-// @version 0.1.8
+// @version 0.1.9
 // @description Apply custom styles to JPDB pages, replace deck list on learn page, and style buttons
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -9,21 +9,21 @@
 // @updateURL https://raw.githubusercontent.com/6a67/jpdb-userscript/main/script.user.js
 // ==/UserScript==
 
-(function() {
-    'use strict';
+(function () {
+	'use strict';
 
-    const CONFIG = {
-        enableButtonStyling: true,
-        learnPageUrl: 'https://jpdb.io/learn',
-        deckListPageUrl: 'https://jpdb.io/deck-list',
-        reviewPageUrlPrefix: 'https://jpdb.io/review',
-        deckListSelector: 'div.deck-list',
-        deckListLinkSelector: 'a[href="/deck-list"]',
-        reviewButtonSelector: '.review-button-group input[type="submit"]'
-    };
+	const CONFIG = {
+		enableButtonStyling: true,
+		learnPageUrl: 'https://jpdb.io/learn',
+		deckListPageUrl: 'https://jpdb.io/deck-list',
+		reviewPageUrlPrefix: 'https://jpdb.io/review',
+		deckListSelector: 'div.deck-list',
+		deckListLinkSelector: 'a[href="/deck-list"]',
+		reviewButtonSelector: '.review-button-group input[type="submit"]',
+	};
 
-    const STYLES = {
-        main: `
+	const STYLES = {
+		main: `
             @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
 
             .dark-mode {
@@ -207,12 +207,16 @@
                 position: absolute;
                 right: 3em;
                 top: 50%;
-            }
+            }      
+            
+            /* This hides the additional messages on the homepage, including the Patreon message */
+		    /* Please support the developer by via Patreon */
+            body :has(a[href*="patreon.com"]) > *:nth-child(n+6) {
+                display: none !important;
+            }  
         `,
 
-
-
-        button: `
+		button: `
             .main.column form {
                 display: inline-block;
             }
@@ -248,150 +252,153 @@
             .main.column input[type="submit"]:active::before {
                 opacity: 0.5;
             }
-        `
-    };
+        `,
+	};
 
-    function applyStyles() {
-        GM_addStyle(STYLES.main);
-        if (CONFIG.enableButtonStyling) {
-            GM_addStyle(STYLES.button);
-        }
-    }
+	function applyStyles() {
+		GM_addStyle(STYLES.main);
+		if (CONFIG.enableButtonStyling) {
+			GM_addStyle(STYLES.button);
+		}
+	}
 
-    function applyGridStyle(element) {
-        if (!element) return;
-        element.style.cssText = `
+	function applyGridStyle(element) {
+		if (!element) return;
+		element.style.cssText = `
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 10px;
         `;
-        Array.from(element.children).forEach(child => child.style.margin = '0');
-    }
+		Array.from(element.children).forEach((child) => (child.style.margin = '0'));
+	}
 
-    function hideDeckListLink() {
-        const deckListLink = document.querySelector(CONFIG.deckListLinkSelector);
-        if (deckListLink) {
-            deckListLink.style.display = 'none';
-        }
-    }
+	function hideDeckListLink() {
+		const deckListLink = document.querySelector(CONFIG.deckListLinkSelector);
+		if (deckListLink) {
+			deckListLink.style.display = 'none';
+		}
+	}
 
-    async function replaceDeckList() {
-        try {
-            const response = await fetch(CONFIG.deckListPageUrl);
-            const html = await response.text();
-            const parser = new DOMParser();
-            const deckListPage = parser.parseFromString(html, 'text/html');
-            const newDeckList = deckListPage.querySelector(CONFIG.deckListSelector);
-            
-            if (newDeckList) {
-                const currentDeckList = document.querySelector(CONFIG.deckListSelector);
-                if (currentDeckList) {
-                    const clonedDeckList = newDeckList.cloneNode(true);
-                    currentDeckList.replaceWith(clonedDeckList);
-                    applyGridStyle(clonedDeckList);
-                    hideDeckListLink();
-                }
-            }
-        } catch (error) {
-            console.error('Error replacing deck list:', error);
-        }
-    }
+	async function replaceDeckList() {
+		try {
+			const response = await fetch(CONFIG.deckListPageUrl);
+			const html = await response.text();
+			const parser = new DOMParser();
+			const deckListPage = parser.parseFromString(html, 'text/html');
+			const newDeckList = deckListPage.querySelector(CONFIG.deckListSelector);
 
-    function darkenColor(hex, factor = 0.8) {
-        const r = Math.floor(parseInt(hex.slice(1, 3), 16) * factor);
-        const g = Math.floor(parseInt(hex.slice(3, 5), 16) * factor);
-        const b = Math.floor(parseInt(hex.slice(5, 7), 16) * factor);
-        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-    }
+			if (newDeckList) {
+				const currentDeckList = document.querySelector(CONFIG.deckListSelector);
+				if (currentDeckList) {
+					const clonedDeckList = newDeckList.cloneNode(true);
+					currentDeckList.replaceWith(clonedDeckList);
+					applyGridStyle(clonedDeckList);
+					hideDeckListLink();
+				}
+			}
+		} catch (error) {
+			console.error('Error replacing deck list:', error);
+		}
+	}
 
-    function styleButton(button) {
-        const computedStyle = window.getComputedStyle(button);
-        const colorVar = button.classList.contains('v1') ? '--outline-v1-color' :
-                         button.classList.contains('v3') ? '--outline-v3-color' :
-                         button.classList.contains('v4') ? '--outline-v4-color' :
-                         '--outline-input-color';
-        const buttonColor = computedStyle.getPropertyValue(colorVar).trim();
-        const darkerColor = darkenColor(buttonColor);
+	function darkenColor(hex, factor = 0.8) {
+		const r = Math.floor(parseInt(hex.slice(1, 3), 16) * factor);
+		const g = Math.floor(parseInt(hex.slice(3, 5), 16) * factor);
+		const b = Math.floor(parseInt(hex.slice(5, 7), 16) * factor);
+		return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+	}
 
-        button.style.cssText = `
+	function styleButton(button) {
+		const computedStyle = window.getComputedStyle(button);
+		const colorVar = button.classList.contains('v1')
+			? '--outline-v1-color'
+			: button.classList.contains('v3')
+			? '--outline-v3-color'
+			: button.classList.contains('v4')
+			? '--outline-v4-color'
+			: '--outline-input-color';
+		const buttonColor = computedStyle.getPropertyValue(colorVar).trim();
+		const darkerColor = darkenColor(buttonColor);
+
+		button.style.cssText = `
             background-color: ${buttonColor};
             box-shadow: 0 5px 0 ${darkerColor}, 0 5px 10px rgba(0,0,0,0.2);
         `;
 
-        const buttonEvents = {
-            mousedown: () => {
-                button.style.transform = 'translateY(4px)';
-                button.style.boxShadow = `0 1px 0 ${darkerColor}, 0 1px 3px rgba(0,0,0,0.2)`;
-                button.style.backgroundColor = darkerColor;
-            },
-            mouseup: () => {
-                button.style.transform = '';
-                button.style.boxShadow = `0 5px 0 ${darkerColor}, 0 5px 10px rgba(0,0,0,0.2)`;
-                button.style.backgroundColor = buttonColor;
-            },
-            mouseleave: () => {
-                button.style.transform = '';
-                button.style.boxShadow = `0 5px 0 ${darkerColor}, 0 5px 10px rgba(0,0,0,0.2)`;
-                button.style.backgroundColor = buttonColor;
-            }
-        };
+		const buttonEvents = {
+			mousedown: () => {
+				button.style.transform = 'translateY(4px)';
+				button.style.boxShadow = `0 1px 0 ${darkerColor}, 0 1px 3px rgba(0,0,0,0.2)`;
+				button.style.backgroundColor = darkerColor;
+			},
+			mouseup: () => {
+				button.style.transform = '';
+				button.style.boxShadow = `0 5px 0 ${darkerColor}, 0 5px 10px rgba(0,0,0,0.2)`;
+				button.style.backgroundColor = buttonColor;
+			},
+			mouseleave: () => {
+				button.style.transform = '';
+				button.style.boxShadow = `0 5px 0 ${darkerColor}, 0 5px 10px rgba(0,0,0,0.2)`;
+				button.style.backgroundColor = buttonColor;
+			},
+		};
 
-        Object.entries(buttonEvents).forEach(([event, handler]) => {
-            button.addEventListener(event, handler);
-        });
-    }
+		Object.entries(buttonEvents).forEach(([event, handler]) => {
+			button.addEventListener(event, handler);
+		});
+	}
 
-    function styleReviewButtons() {
-        document.querySelectorAll(CONFIG.reviewButtonSelector).forEach(styleButton);
-    }
+	function styleReviewButtons() {
+		document.querySelectorAll(CONFIG.reviewButtonSelector).forEach(styleButton);
+	}
 
-    function initLearnPage() {
-        replaceDeckList();
-        hideDeckListLink();
+	function initLearnPage() {
+		replaceDeckList();
+		hideDeckListLink();
 
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList' && mutation.target.classList.contains('deck-list')) {
-                    replaceDeckList();
-                }
-            });
-        });
+		const observer = new MutationObserver((mutations) => {
+			mutations.forEach((mutation) => {
+				if (mutation.type === 'childList' && mutation.target.classList.contains('deck-list')) {
+					replaceDeckList();
+				}
+			});
+		});
 
-        observer.observe(document.body, { childList: true, subtree: true });
-    }
+		observer.observe(document.body, { childList: true, subtree: true });
+	}
 
-    function initReviewPage() {
-        styleReviewButtons();
+	function initReviewPage() {
+		styleReviewButtons();
 
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach(node => {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                            if (node.classList.contains('review-button-group')) {
-                                styleReviewButtons();
-                            } else {
-                                node.querySelectorAll(CONFIG.reviewButtonSelector).forEach(styleButton);
-                            }
-                        }
-                    });
-                }
-            });
-        });
+		const observer = new MutationObserver((mutations) => {
+			mutations.forEach((mutation) => {
+				if (mutation.type === 'childList') {
+					mutation.addedNodes.forEach((node) => {
+						if (node.nodeType === Node.ELEMENT_NODE) {
+							if (node.classList.contains('review-button-group')) {
+								styleReviewButtons();
+							} else {
+								node.querySelectorAll(CONFIG.reviewButtonSelector).forEach(styleButton);
+							}
+						}
+					});
+				}
+			});
+		});
 
-        observer.observe(document.body, { childList: true, subtree: true });
-    }
+		observer.observe(document.body, { childList: true, subtree: true });
+	}
 
-    function init() {
-        applyStyles();
+	function init() {
+		applyStyles();
 
-        if (window.location.href === CONFIG.learnPageUrl) {
-            initLearnPage();
-        } else if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && CONFIG.enableButtonStyling) {
-            initReviewPage();
-        }
-    }
+		if (window.location.href === CONFIG.learnPageUrl) {
+			initLearnPage();
+		} else if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && CONFIG.enableButtonStyling) {
+			initReviewPage();
+		}
+	}
 
-    applyStyles();
-    document.addEventListener('DOMContentLoaded', init);
+	applyStyles();
+	document.addEventListener('DOMContentLoaded', init);
 })();
