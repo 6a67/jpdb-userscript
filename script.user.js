@@ -211,9 +211,13 @@
             
             /* This hides the additional messages on the homepage, including the Patreon message */
 		    /* Please support the developer by via Patreon */
-            body :has(a[href*="patreon.com"]) > *:nth-child(n+6) {
+            /* body :has(a[href*="patreon.com"]) > *:nth-child(n+6) {
                 display: none !important;
-            }  
+            } */
+
+            body > div.container.bugfix:has(a[href*="patreon.com"]) > *:nth-child(n+6) {
+                display: none !important;
+            }
         `,
 
 		button: `
