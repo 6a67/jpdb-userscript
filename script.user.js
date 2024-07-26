@@ -15,6 +15,7 @@
     const CONFIG = {
         enableButtonStyling: true,
         learnPageUrl: 'https://jpdb.io/learn',
+        deckListPageUrl: 'https://jpdb.io/deck-list',
         reviewPageUrlPrefix: 'https://jpdb.io/review',
         deckListSelector: 'div.deck-list',
         deckListLinkSelector: 'a[href="/deck-list"]',
@@ -218,7 +219,7 @@
 
     async function replaceDeckList() {
         try {
-            const response = await fetch(CONFIG.learnPageUrl);
+            const response = await fetch(CONFIG.deckListPageUrl);
             const html = await response.text();
             const parser = new DOMParser();
             const deckListPage = parser.parseFromString(html, 'text/html');
