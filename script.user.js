@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.16
+// @version 0.1.17
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -308,6 +308,8 @@
             
             .stroke-order-kanji [id*="strokenumbers" i] {
                 fill: var(--text-strong-color) !important;
+                opacity: 0.15;
+                font-size: 6px !important;
             }
 
             /* The svgs are usually a bit too small */
