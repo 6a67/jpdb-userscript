@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.18
+// @version 0.1.19
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -37,7 +37,7 @@
 		deckListLinkSelector: 'a[href="/deck-list"]',
 		reviewButtonSelector: '.review-button-group input[type="submit"]',
 		enableReplaceKanjiStrokeOrder: true,
-        useFontInsteadOfSvg: true,
+        useFontInsteadOfSvg: false,
 		strokeOrderRepoUrl: 'https://github.com/KanjiVG/kanjivg/raw/master/kanji/',
 		kanjiSvgSelector: '.kanji svg',
 		kanjiPlainSelector: '.kanji.plain',
