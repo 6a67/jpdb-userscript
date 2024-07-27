@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript
 // @namespace http://tampermonkey.net/
-// @version 0.1.9
+// @version 0.1.10
 // @description Apply custom styles to JPDB pages, replace deck list on learn page, and style buttons
 // @match https://jpdb.io/*
 // @grant GM_addStyle
