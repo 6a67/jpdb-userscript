@@ -318,9 +318,14 @@
             /* The svgs are usually a bit too small */
             svg.stroke-order-kanji > g {
                 position: relative !important;
-                scale: 1.15;
+                scale: 1.125;
                 transform-origin: center center;
                 overflow: visible;
+            }
+
+            /* Bigger scaling for search results */
+            .vbox:has(> .kanji.plain) .kanji.plain > svg.stroke-order-kanji > g {
+                scale: 1.3;
             }
 
             svg.stroke-order-kanji {
