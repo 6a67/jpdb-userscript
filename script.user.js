@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.17
+// @version 0.1.18
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -37,6 +37,7 @@
 		deckListLinkSelector: 'a[href="/deck-list"]',
 		reviewButtonSelector: '.review-button-group input[type="submit"]',
 		enableReplaceKanjiStrokeOrder: true,
+        useFontInsteadOfSvg: true,
 		strokeOrderRepoUrl: 'https://github.com/KanjiVG/kanjivg/raw/master/kanji/',
 		kanjiSvgSelector: '.kanji svg',
 		kanjiPlainSelector: '.kanji.plain',
@@ -302,25 +303,25 @@
             }
 
             /* Kanji Stroke Order */
-            .stroke-order-kanji [style*='stroke:'] {
+            svg.stroke-order-kanji [style*='stroke:'] {
                 stroke: var(--text-color) !important;
             }
             
-            .stroke-order-kanji [id*="strokenumbers" i] {
+            svg.stroke-order-kanji [id*="strokenumbers" i] {
                 fill: var(--text-strong-color) !important;
                 opacity: 0.15;
                 font-size: 6px !important;
             }
 
             /* The svgs are usually a bit too small */
-            .stroke-order-kanji > g {
+            svg.stroke-order-kanji > g {
                 position: relative !important;
                 scale: 1.1;
                 transform-origin: center center;
                 overflow: visible;
             }
 
-            .stroke-order-kanji {
+            svg.stroke-order-kanji {
                 overflow: visible;
             }
         `,
@@ -362,13 +363,41 @@
                 opacity: 0.5;
             }
         `,
+
+        kanjiFont: `
+            @font-face {
+                font-family: "KanjiStrokeOrders";
+                src: url("https://raw.githubusercontent.com/edarzh/kanjistrokeorders/main/KanjiStrokeOrders_v4.004.woff2");
+            }
+            
+            .kanji-font {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                font-family: KanjiStrokeOrders;
+                transform: translate(-50%, -50%);
+
+                z-index: 2;
+
+                user-select: none;
+                cursor: default;
+            }
+
+            svg.kanji > path {
+                visibility: hidden;
+            }
+        `,
 	};
+
 
 	function applyStyles() {
 		GM_addStyle(STYLES.main);
 		if (CONFIG.enableButtonStyling) {
 			GM_addStyle(STYLES.button);
 		}
+        if (CONFIG.enableReplaceKanjiStrokeOrder && CONFIG.useFontInsteadOfSvg) {
+            GM_addStyle(STYLES.kanjiFont);
+        }
 	}
 
 	function applyGridStyle(element) {
@@ -461,9 +490,41 @@
 		document.querySelectorAll(CONFIG.reviewButtonSelector).forEach(styleButton);
 	}
 
-	// This does external requests to github.com
-	function replaceKanjiStrokeOrder() {
-		const kanjiSvg = document.querySelector(CONFIG.kanjiSvgSelector);
+    function replaceKanjiStrokeOrderFont() {
+        const kanjiSvg = document.querySelector(CONFIG.kanjiSvgSelector);
+        const kanjiPlain = document.querySelector(CONFIG.kanjiPlainSelector);
+        if (!kanjiSvg || !kanjiPlain) return;
+        const kanjiChar = kanjiPlain.getAttribute('href').split(/[?#]/)[0].split('/').pop();
+
+        // kanjiSvg.remove();
+        const kanjiFont = document.createElement('span');
+        kanjiFont.classList.add('kanji-font');
+        kanjiFont.textContent = kanjiChar;
+        kanjiPlain.appendChild(kanjiFont);
+
+        resizeKanjiStrokeOrderFont();
+    }
+
+    function resizeKanjiStrokeOrderFont() {
+        const text = document.querySelector('.kanji-font');
+        const container = text.parentElement.parentElement;
+
+        const containerHeight = container.clientHeight;
+        text.style.fontSize = '1px';
+        let fontSize = 1;
+        while (text.clientHeight < containerHeight) {
+            fontSize++;
+            text.style.fontSize = `${fontSize}px`;
+        }
+        fontSize--;
+        
+        // The font would match now, but is often a bit too small
+        fontSize *= 1.25;
+        text.style.fontSize = `${fontSize}px`;
+    }
+
+    function replaceKanjiStrokeOrderSvg() {
+        const kanjiSvg = document.querySelector(CONFIG.kanjiSvgSelector);
 		const kanjiPlain = document.querySelector(CONFIG.kanjiPlainSelector);
 		if (!kanjiSvg || !kanjiPlain) return;
 		const kanjiChar = kanjiPlain.getAttribute('href').split(/[?#]/)[0].split('/').pop();
@@ -515,6 +576,14 @@
 				console.error('Error fetching kanji stroke order:', error);
 			},
 		});
+    }
+	// This does external requests to github.com
+	function replaceKanjiStrokeOrder() {
+        if (CONFIG.useFontInsteadOfSvg) {
+            replaceKanjiStrokeOrderFont();
+        } else {
+            replaceKanjiStrokeOrderSvg();
+        }
 	}
 
 	function initLearnPage() {
@@ -567,6 +636,11 @@
 			});
 		});
 		observer.observe(document.body, { childList: true, subtree: true });
+
+        if (CONFIG.useFontInsteadOfSvg) {
+            window.addEventListener('load', resizeKanjiStrokeOrderFont);
+            window.addEventListener('resize', resizeKanjiStrokeOrderFont);
+        }
 	}
 
 	function init() {
