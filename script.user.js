@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.12
+// @version 0.1.13
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -191,10 +191,13 @@
 
             .search .result,
             .dropdown .dropdown-content,
-            .dropdown summary,
             .accordion,
             fieldset {
                 border-radius: 1rem !important;
+            }
+
+            .dropdown summary {
+                border-radius: 0.5rem !important;
             }
             
             fieldset legend {
