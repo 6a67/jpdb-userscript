@@ -26,6 +26,14 @@
 		main: `
             @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
 
+            :root {
+                /* Original button colors */
+                --outline-v1-color: #ff2929;
+                --outline-v3-color: #d98c00;
+                --outline-v4-color: #0ccf0c;
+                --easy-button-color: #4b8dff;
+            }
+
             .dark-mode {
                 --text-color: #ddd;
                 --background-color: #151f24;
@@ -78,16 +86,22 @@
                 --state-known: #4fa825;
                 --state-overdue: #ff8c42;
                 --state-failed: #ff3b3b;
-            
-                --outline-v1-color: #ff2929;
-                --outline-v3-color: #d98c00;
-                --outline-v4-color: #0ccf0c;
+
+                /* Custom button colors */
+                --outline-v1-color: #d42728;
+                --outline-v3-color: #b57807;
+                --outline-v4-color: #0eaf10;
+                --easy-button-color: #3c6fc3;
             }
             
-            :is(html.dark-mode) .highlight,
             :is(html.dark-mode) .main.column {
+                --outline-input-color: var(--easy-button-color);
+            }
+
+            :is(html.dark-mode) .highlight {
                 --outline-input-color: #4b8dff;
             }
+            
             
             :is(html.dark-mode) .tooltip:before {
                 background-color: #101518;
@@ -218,6 +232,16 @@
             body > div.container.bugfix:has(a[href*="patreon.com"]) > *:nth-child(n+6) {
                 display: none !important;
             }
+
+
+            /* Kanji Grid on hover */
+            svg.kanji:hover {
+                background-image:
+                  linear-gradient(to right, var(--deeper-background-color) 5%, transparent 5%),
+                  linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
+                background-size: calc(calc(100% - 2.5%) / 2) calc(calc(100% - 2.5%) / 2);
+                background-position: 0 0, 0 0;
+              }
         `,
 
 		button: `
