@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.13
+// @version 0.1.14
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -251,24 +251,41 @@
 
 
             /* Kanji Grid on hover */
-            .kanji.plain {
+            .vbox .kanji.plain {
                 position: relative;
                 display: inline-block;
             }
-            
-            .kanji.plain:hover::before {
+
+            /* Kanji Grid for review */
+            .hbox .kanji.plain:hover::before {
                 content: '';
                 position: absolute;
-                top: calc(-2.5% / 2);
-                bottom: calc(2.5% / 4);
-                left: calc(-2.5% / 2);
-                right: calc(-2.5% / 2);
+                top: calc(2.5% / 2);
+                bottom: 0;
+                left: calc(-2.5%);
+                right: calc(-2.5%);
                 background-image:
                     linear-gradient(to right, var(--deeper-background-color) 5%, transparent 5%),
                     linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
                 background-size: calc(calc(100% - 2.5%) / 2) calc(calc(100% - 2.5%) / 2);
                 z-index: 1;
                 border-radius: inherit;
+            }
+
+            /* Kanji Grid for search results */
+            .vbox .kanji.plain:hover::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                bottom: calc(2.5% / 2);
+                left: 0;
+                right: 0;
+                background-image:
+                    linear-gradient(to right, var(--deeper-background-color) 5%, transparent 5%),
+                    linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
+                background-size: calc(calc(100% - 2.5%) / 2) calc(calc(100% - 2.5%) / 2);
+                z-index: 1;
+                border-radius: 0.5rem;
             }
             
             .kanji.plain svg {
