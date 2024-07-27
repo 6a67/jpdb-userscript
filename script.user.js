@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.21
+// @version 0.1.22
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -318,7 +318,7 @@
             /* The svgs are usually a bit too small */
             svg.stroke-order-kanji > g {
                 position: relative !important;
-                scale: 1.1;
+                scale: 1.15;
                 transform-origin: center center;
                 overflow: visible;
             }
