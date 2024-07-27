@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.11
+// @version 0.1.12
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -248,13 +248,29 @@
 
 
             /* Kanji Grid on hover */
-            svg.kanji:hover {
+            .kanji.plain {
+                position: relative;
+                display: inline-block;
+            }
+            
+            .kanji.plain:hover::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: calc(-2.5% / 2);
+                right: calc(-2.5% / 2);
                 background-image:
-                  linear-gradient(to right, var(--deeper-background-color) 5%, transparent 5%),
-                  linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
+                    linear-gradient(to right, var(--deeper-background-color) 5%, transparent 5%),
+                    linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
                 background-size: calc(calc(100% - 2.5%) / 2) calc(calc(100% - 2.5%) / 2);
-                background-position: 0 0, 0 0;
-              }
+                z-index: 1;
+            }
+            
+            .kanji.plain svg {
+                position: relative;
+                z-index: 2;
+            }
         `,
 
 		button: `
