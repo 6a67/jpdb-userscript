@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.15
+// @version 0.1.16
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
+// @grant GM_xmlhttpRequest
+// @connect github.com
 // @run-at document-start
 // @updateURL https://raw.githubusercontent.com/6a67/jpdb-userscript/main/script.user.js
 // ==/UserScript==
@@ -21,6 +23,7 @@
 // - Updated deck list styling and shows all decks on learning page
 // - - Hides deck list link
 // - Review button styling
+// - Replace kanji stroke order with KanjiVG
 
 (function () {
 	'use strict';
@@ -33,6 +36,10 @@
 		deckListSelector: 'div.deck-list',
 		deckListLinkSelector: 'a[href="/deck-list"]',
 		reviewButtonSelector: '.review-button-group input[type="submit"]',
+		enableReplaceKanjiStrokeOrder: true,
+		strokeOrderRepoUrl: 'https://github.com/KanjiVG/kanjivg/raw/master/kanji/',
+		kanjiSvgSelector: '.kanji svg',
+		kanjiPlainSelector: '.kanji.plain',
 	};
 
 	const STYLES = {
@@ -293,6 +300,27 @@
                 position: relative;
                 z-index: 2;
             }
+
+            /* Kanji Stroke Order */
+            .stroke-order-kanji [style*='stroke:'] {
+                stroke: var(--text-color) !important;
+            }
+            
+            .stroke-order-kanji [id*="strokenumbers" i] {
+                fill: var(--text-strong-color) !important;
+            }
+
+            /* The svgs are usually a bit too small */
+            .stroke-order-kanji > g {
+                position: relative !important;
+                scale: 1.1;
+                transform-origin: center center;
+                overflow: visible;
+            }
+
+            .stroke-order-kanji {
+                overflow: visible;
+            }
         `,
 
 		button: `
@@ -431,6 +459,62 @@
 		document.querySelectorAll(CONFIG.reviewButtonSelector).forEach(styleButton);
 	}
 
+	// This does external requests to github.com
+	function replaceKanjiStrokeOrder() {
+		const kanjiSvg = document.querySelector(CONFIG.kanjiSvgSelector);
+		const kanjiPlain = document.querySelector(CONFIG.kanjiPlainSelector);
+		if (!kanjiSvg || !kanjiPlain) return;
+		const kanjiChar = kanjiPlain.getAttribute('href').split(/[?#]/)[0].split('/').pop();
+		const kanjiUnicode = kanjiChar.codePointAt(0).toString(16).padStart(5, '0');
+		const strokeOrderUrl = `${CONFIG.strokeOrderRepoUrl}${kanjiUnicode}.svg`;
+
+		// Store the original SVG's dimensions
+		const originalWidth = kanjiSvg.getAttribute('width');
+		const originalHeight = kanjiSvg.getAttribute('height');
+		const originalClass = kanjiSvg.getAttribute('class');
+
+		GM_xmlhttpRequest({
+			method: 'GET',
+			url: strokeOrderUrl,
+			onload: function (response) {
+				if (response.status === 200) {
+					// Create a temporary div to hold the new SVG
+					const tempDiv = document.createElement('div');
+					tempDiv.innerHTML = response.responseText;
+					const newSvg = tempDiv.querySelector('svg');
+
+					if (newSvg) {
+						// Set the dimensions of the new SVG to match the original
+						newSvg.setAttribute('width', originalWidth);
+						newSvg.setAttribute('height', originalHeight);
+
+						// Ensure the viewBox is set to scale the content correctly
+						if (!newSvg.getAttribute('viewBox')) {
+							const viewBox = `0 0 ${newSvg.getAttribute('width')} ${newSvg.getAttribute('height')}`;
+							newSvg.setAttribute('viewBox', viewBox);
+						}
+
+						// Set class to match the original SVG
+						newSvg.setAttribute('class', originalClass);
+
+						// Add 'stroke-order-kanji' class to the new SVG
+						newSvg.classList.add('stroke-order-kanji');
+
+						// Replace the old SVG with the new one
+						kanjiSvg.parentNode.replaceChild(newSvg, kanjiSvg);
+					} else {
+						console.error('New SVG not found in the response');
+					}
+				} else {
+					console.error('Error fetching kanji stroke order: Status ' + response.status);
+				}
+			},
+			onerror: function (error) {
+				console.error('Error fetching kanji stroke order:', error);
+			},
+		});
+	}
+
 	function initLearnPage() {
 		replaceDeckList();
 		hideDeckListLink();
@@ -468,6 +552,21 @@
 		observer.observe(document.body, { childList: true, subtree: true });
 	}
 
+	function initKanjiStrokeOrder() {
+		replaceKanjiStrokeOrder();
+
+		const observer = new MutationObserver((mutations) => {
+			mutations.forEach((mutation) => {
+				if (mutation.type === 'childList') {
+					mutation.addedNodes.forEach((node) => {
+						node.querySelectorAll(CONFIG.kanjiSvgSelector).forEach(replaceKanjiStrokeOrder);
+					});
+				}
+			});
+		});
+		observer.observe(document.body, { childList: true, subtree: true });
+	}
+
 	function init() {
 		applyStyles();
 
@@ -475,6 +574,10 @@
 			initLearnPage();
 		} else if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && CONFIG.enableButtonStyling) {
 			initReviewPage();
+		}
+
+		if (CONFIG.enableReplaceKanjiStrokeOrder) {
+			initKanjiStrokeOrder();
 		}
 	}
 
