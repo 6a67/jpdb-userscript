@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.14
+// @version 0.1.15
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -257,23 +257,24 @@
             }
 
             /* Kanji Grid for review */
-            .hbox .kanji.plain:hover::before {
+            .hbox:has(> .kanji.plain):hover::before {
                 content: '';
                 position: absolute;
-                top: calc(2.5% / 2);
-                bottom: 0;
-                left: calc(-2.5%);
-                right: calc(-2.5%);
+                top: 0%;
+                left: calc(50% - 8rem);
                 background-image:
                     linear-gradient(to right, var(--deeper-background-color) 5%, transparent 5%),
                     linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
                 background-size: calc(calc(100% - 2.5%) / 2) calc(calc(100% - 2.5%) / 2);
                 z-index: 1;
                 border-radius: inherit;
+
+                width: 16rem;
+                height: 16rem;
             }
 
             /* Kanji Grid for search results */
-            .vbox .kanji.plain:hover::before {
+            .vbox:has(> .kanji.plain) .kanji.plain:hover::before {
                 content: '';
                 position: absolute;
                 top: 0;
