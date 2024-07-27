@@ -1,13 +1,26 @@
 // ==UserScript==
-// @name JPDB Userscript
+// @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.10
-// @description Apply custom styles to JPDB pages, replace deck list on learn page, and style buttons
+// @version 0.1.11
+// @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
 // @run-at document-start
 // @updateURL https://raw.githubusercontent.com/6a67/jpdb-userscript/main/script.user.js
 // ==/UserScript==
+
+// Features
+// - Design overhaul
+// - - Updated dark mode
+// - - Font change
+// - - Rounded corners
+// - - Updated accordion styling
+// - Cleaned up homepage
+// - Kanji grid on hover
+// - Updated search bar styling
+// - Updated deck list styling and shows all decks on learning page
+// - - Hides deck list link
+// - Review button styling
 
 (function () {
 	'use strict';
