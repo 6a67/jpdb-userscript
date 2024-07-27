@@ -256,8 +256,8 @@
             .kanji.plain:hover::before {
                 content: '';
                 position: absolute;
-                top: 0;
-                bottom: 0;
+                top: calc(-2.5% / 2);
+                bottom: calc(2.5% / 4);
                 left: calc(-2.5% / 2);
                 right: calc(-2.5% / 2);
                 background-image:
@@ -265,6 +265,7 @@
                     linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
                 background-size: calc(calc(100% - 2.5%) / 2) calc(calc(100% - 2.5%) / 2);
                 z-index: 1;
+                border-radius: inherit;
             }
             
             .kanji.plain svg {
