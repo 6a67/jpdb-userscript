@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.19
+// @version 0.1.20
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
 // @grant GM_xmlhttpRequest
+// @grant GM_setValue
+// @grant GM_getValue
 // @connect github.com
 // @run-at document-start
 // @updateURL https://raw.githubusercontent.com/6a67/jpdb-userscript/main/script.user.js
@@ -523,60 +525,96 @@
         text.style.fontSize = `${fontSize}px`;
     }
 
+    function fetchAndCacheSVG(strokeOrderUrl, originalWidth, originalHeight, originalClass, kanjiSvg) {
+        const cachedSVG = GM_getValue(strokeOrderUrl);
+        
+        if (cachedSVG) {
+            processSVG(cachedSVG, originalWidth, originalHeight, originalClass, kanjiSvg);
+        } else {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: strokeOrderUrl,
+                onload: function (response) {
+                    if (response.status === 200) {
+                        GM_setValue(strokeOrderUrl, response.responseText);
+                        processSVG(response.responseText, originalWidth, originalHeight, originalClass, kanjiSvg);
+                    } else {
+                        console.error('Error fetching kanji stroke order: Status ' + response.status);
+                    }
+                },
+                onerror: function (error) {
+                    console.error('Error fetching kanji stroke order:', error);
+                },
+            });
+        }
+    }
+
     function replaceKanjiStrokeOrderSvg() {
         const kanjiSvg = document.querySelector(CONFIG.kanjiSvgSelector);
-		const kanjiPlain = document.querySelector(CONFIG.kanjiPlainSelector);
-		if (!kanjiSvg || !kanjiPlain) return;
-		const kanjiChar = kanjiPlain.getAttribute('href').split(/[?#]/)[0].split('/').pop();
-		const kanjiUnicode = kanjiChar.codePointAt(0).toString(16).padStart(5, '0');
-		const strokeOrderUrl = `${CONFIG.strokeOrderRepoUrl}${kanjiUnicode}.svg`;
-
-		// Store the original SVG's dimensions
-		const originalWidth = kanjiSvg.getAttribute('width');
-		const originalHeight = kanjiSvg.getAttribute('height');
-		const originalClass = kanjiSvg.getAttribute('class');
-
-		GM_xmlhttpRequest({
-			method: 'GET',
-			url: strokeOrderUrl,
-			onload: function (response) {
-				if (response.status === 200) {
-					// Create a temporary div to hold the new SVG
-					const tempDiv = document.createElement('div');
-					tempDiv.innerHTML = response.responseText;
-					const newSvg = tempDiv.querySelector('svg');
-
-					if (newSvg) {
-						// Set the dimensions of the new SVG to match the original
-						newSvg.setAttribute('width', originalWidth);
-						newSvg.setAttribute('height', originalHeight);
-
-						// Ensure the viewBox is set to scale the content correctly
-						if (!newSvg.getAttribute('viewBox')) {
-							const viewBox = `0 0 ${newSvg.getAttribute('width')} ${newSvg.getAttribute('height')}`;
-							newSvg.setAttribute('viewBox', viewBox);
-						}
-
-						// Set class to match the original SVG
-						newSvg.setAttribute('class', originalClass);
-
-						// Add 'stroke-order-kanji' class to the new SVG
-						newSvg.classList.add('stroke-order-kanji');
-
-						// Replace the old SVG with the new one
-						kanjiSvg.parentNode.replaceChild(newSvg, kanjiSvg);
-					} else {
-						console.error('New SVG not found in the response');
-					}
-				} else {
-					console.error('Error fetching kanji stroke order: Status ' + response.status);
-				}
-			},
-			onerror: function (error) {
-				console.error('Error fetching kanji stroke order:', error);
-			},
-		});
+        const kanjiPlain = document.querySelector(CONFIG.kanjiPlainSelector);
+        if (!kanjiSvg || !kanjiPlain) return;
+        const kanjiChar = kanjiPlain.getAttribute('href').split(/[?#]/)[0].split('/').pop();
+        const kanjiUnicode = kanjiChar.codePointAt(0).toString(16).padStart(5, '0');
+        const strokeOrderUrl = `${CONFIG.strokeOrderRepoUrl}${kanjiUnicode}.svg`;
+    
+        // Store the original SVG's dimensions
+        const originalWidth = kanjiSvg.getAttribute('width');
+        const originalHeight = kanjiSvg.getAttribute('height');
+        const originalClass = kanjiSvg.getAttribute('class');
+    
+        // Check cache first
+        const cachedSvg = GM_getValue(strokeOrderUrl);
+        if (cachedSvg) {
+            replaceSvgWithCached(cachedSvg);
+        } else {
+            fetchAndCacheSvg();
+        }
+    
+        function replaceSvgWithCached(svgContent) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = svgContent;
+            const newSvg = tempDiv.querySelector('svg');
+            if (newSvg) {
+                applySvgAttributes(newSvg);
+                kanjiSvg.parentNode.replaceChild(newSvg, kanjiSvg);
+            } else {
+                console.error('New SVG not found in the cached content');
+            }
+        }
+    
+        function fetchAndCacheSvg() {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: strokeOrderUrl,
+                onload: function (response) {
+                    if (response.status === 200) {
+                        const svgContent = response.responseText;
+                        GM_setValue(strokeOrderUrl, svgContent); // Cache the SVG
+                        replaceSvgWithCached(svgContent);
+                    } else {
+                        console.error('Error fetching kanji stroke order: Status ' + response.status);
+                    }
+                },
+                onerror: function (error) {
+                    console.error('Error fetching kanji stroke order:', error);
+                },
+            });
+        }
+    
+        function applySvgAttributes(newSvg) {
+            newSvg.setAttribute('width', originalWidth);
+            newSvg.setAttribute('height', originalHeight);
+    
+            if (!newSvg.getAttribute('viewBox')) {
+                const viewBox = `0 0 ${newSvg.getAttribute('width')} ${newSvg.getAttribute('height')}`;
+                newSvg.setAttribute('viewBox', viewBox);
+            }
+    
+            newSvg.setAttribute('class', originalClass);
+            newSvg.classList.add('stroke-order-kanji');
+        }
     }
+
 	// This does external requests to github.com
 	function replaceKanjiStrokeOrder() {
         if (CONFIG.useFontInsteadOfSvg) {
