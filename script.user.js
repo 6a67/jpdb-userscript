@@ -540,30 +540,6 @@
         text.style.fontSize = `${fontSize}px`;
     }
 
-    function fetchAndCacheSVG(strokeOrderUrl, originalWidth, originalHeight, originalClass, kanjiSvg) {
-        const cachedSVG = GM_getValue(strokeOrderUrl);
-        
-        if (cachedSVG) {
-            processSVG(cachedSVG, originalWidth, originalHeight, originalClass, kanjiSvg);
-        } else {
-            GM_xmlhttpRequest({
-                method: 'GET',
-                url: strokeOrderUrl,
-                onload: function (response) {
-                    if (response.status === 200) {
-                        GM_setValue(strokeOrderUrl, response.responseText);
-                        processSVG(response.responseText, originalWidth, originalHeight, originalClass, kanjiSvg);
-                    } else {
-                        console.error('Error fetching kanji stroke order: Status ' + response.status);
-                    }
-                },
-                onerror: function (error) {
-                    console.error('Error fetching kanji stroke order:', error);
-                },
-            });
-        }
-    }
-
     function replaceKanjiStrokeOrderSvg() {
         const kanjiSvg = document.querySelector(CONFIG.kanjiSvgSelector);
         const kanjiPlain = document.querySelector(CONFIG.kanjiPlainSelector);
