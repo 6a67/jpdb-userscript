@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.24
+// @version 0.1.25
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -415,7 +415,21 @@
         `,
     };
 
+    function injectCSP() {
+        try {
+            const cspMeta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+            if (cspMeta && cspMeta.content.includes('https://fonts.googleapis.com')) {
+                return;
+            }
+            const meta = document.createElement('meta');
+            meta.httpEquiv = 'Content-Security-Policy';
+            meta.content = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;";
+            document.head.appendChild(meta);
+        } catch (error) {}
+    }
+
     function applyStyles() {
+        injectCSP();
         GM_addStyle(STYLES.main);
         if (CONFIG.enableButtonStyling) {
             GM_addStyle(STYLES.button);
@@ -701,7 +715,6 @@
 
     function init() {
         applyStyles();
-
         if (window.location.href === CONFIG.learnPageUrl) {
             initLearnPage();
         } else if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && CONFIG.enableButtonStyling) {
