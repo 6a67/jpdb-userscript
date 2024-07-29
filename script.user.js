@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.25
+// @version 0.1.26
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -563,6 +563,9 @@
 
     function resizeKanjiStrokeOrderFont() {
         const text = document.querySelector('.kanji-font');
+
+        if (!text.parentElement || !text.parentElement.parentElement) return;
+
         const container = text.parentElement.parentElement;
 
         const containerHeight = container.clientHeight;
