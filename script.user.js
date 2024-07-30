@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.26
+// @version 0.1.27
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -47,8 +47,6 @@
 
     const STYLES = {
         main: `
-            @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
-
             :root {
                 /* Original button colors */
                 --outline-v1-color: #ff2929;
@@ -415,21 +413,45 @@
         `,
     };
 
-    function injectCSP() {
-        try {
-            const cspMeta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
-            if (cspMeta && cspMeta.content.includes('https://fonts.googleapis.com')) {
-                return;
+    async function cachedRequest(url, cacheTimeSeconds) {
+        const cacheKey = `cache_${url}`;
+        const cachedData = await GM_getValue(cacheKey);
+
+        if (cachedData) {
+            const { timestamp, data } = cachedData;
+            const isValidCache = cacheTimeSeconds === -1 || (Date.now() - timestamp) / 1000 < cacheTimeSeconds;
+
+            if (isValidCache) {
+                console.log('Using cached data');
+                return data;
             }
-            const meta = document.createElement('meta');
-            meta.httpEquiv = 'Content-Security-Policy';
-            meta.content = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;";
-            document.head.appendChild(meta);
-        } catch (error) {}
+        }
+
+        return new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: url,
+                nocache: true,
+                onload: async function (response) {
+                    if (response.status === 200) {
+                        const newCacheData = {
+                            timestamp: Date.now(),
+                            data: response.responseText,
+                        };
+                        await GM_setValue(cacheKey, newCacheData);
+                        resolve(response.responseText);
+                    } else {
+                        reject(new Error(`Request failed with status ${response.status}`));
+                    }
+                },
+                onerror: function (error) {
+                    reject(error);
+                },
+            });
+        });
     }
 
     function applyStyles() {
-        injectCSP();
         GM_addStyle(STYLES.main);
         if (CONFIG.enableButtonStyling) {
             GM_addStyle(STYLES.button);
@@ -440,6 +462,16 @@
         if (CONFIG.enableReplaceKanjiStrokeOrder && !CONFIG.useFontInsteadOfSvg) {
             GM_addStyle(STYLES.hideKanjiSvg);
         }
+    }
+
+    function injectFont() {
+        const fontUrl = 'https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap';
+
+        const fontStyles = cachedRequest(fontUrl, 24 * 60 * 60);
+
+        fontStyles.then((styles) => {
+            GM_addStyle(styles);
+        });
     }
 
     function applyGridStyle(element) {
@@ -582,7 +614,7 @@
         text.style.fontSize = `${fontSize}px`;
     }
 
-    function replaceKanjiStrokeOrderSvg() {
+    async function replaceKanjiStrokeOrderSvg() {
         const kanjiSvg = document.querySelector(CONFIG.kanjiSvgSelector);
         const kanjiPlain = document.querySelector(CONFIG.kanjiPlainSelector);
         if (!kanjiSvg || !kanjiPlain) return;
@@ -595,13 +627,12 @@
         const originalHeight = kanjiSvg.getAttribute('height');
         const originalClass = kanjiSvg.getAttribute('class');
 
-        // Check cache first
-        const cachedSvg = GM_getValue(strokeOrderUrl);
-        console.log('Cached SVG:', cachedSvg);
-        if (cachedSvg) {
-            replaceSvgWithCached(cachedSvg);
-        } else {
-            fetchAndCacheSvg();
+        try {
+            const svgContent = await cachedRequest(strokeOrderUrl, -1);
+            replaceSvgWithCached(svgContent);
+        } catch (error) {
+            console.error('Error fetching kanji stroke order:', error);
+            GM_addStyle(STYLES.hideKanjiSvgOverrideFallback);
         }
 
         function replaceSvgWithCached(svgContent) {
@@ -614,26 +645,6 @@
             } else {
                 console.error('New SVG not found in the cached content');
             }
-        }
-
-        function fetchAndCacheSvg() {
-            GM_xmlhttpRequest({
-                method: 'GET',
-                url: strokeOrderUrl,
-                onload: function (response) {
-                    if (response.status === 200) {
-                        const svgContent = response.responseText;
-                        GM_setValue(strokeOrderUrl, svgContent); // Cache the SVG
-                        replaceSvgWithCached(svgContent);
-                    } else {
-                        console.error('Error fetching kanji stroke order: Status ' + response.status);
-                        GM_addStyle(STYLES.hideKanjiSvgOverrideFallback);
-                    }
-                },
-                onerror: function (error) {
-                    console.error('Error fetching kanji stroke order:', error);
-                },
-            });
         }
 
         function applySvgAttributes(newSvg) {
@@ -717,6 +728,7 @@
     }
 
     function init() {
+        injectFont();
         applyStyles();
         if (window.location.href === CONFIG.learnPageUrl) {
             initLearnPage();
