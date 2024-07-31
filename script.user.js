@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.30
+// @version 0.1.31
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -658,7 +658,7 @@
             const svgContent = await cachedRequest(strokeOrderUrl, -1);
             replaceSvgWithCached(svgContent);
         } catch (error) {
-            console.error('Error fetching kanji stroke order:', error);
+            console.error('Error fetching kanji stroke order for kanji:', kanjiChar, error);
             GM_addStyle(STYLES.hideKanjiSvgOverrideFallback);
         }
 
@@ -668,7 +668,11 @@
             const newSvg = tempDiv.querySelector('svg');
             if (newSvg) {
                 applySvgAttributes(newSvg);
-                kanjiSvg.parentNode.replaceChild(newSvg, kanjiSvg);
+                if (kanjiSvg.parentElement) {
+                    kanjiSvg.parentNode.replaceChild(newSvg, kanjiSvg);
+                } else {
+                    console.warn('Parent of original SVG not found. This can be ignored if the SVG was already replaced.');
+                }
             } else {
                 console.error('New SVG not found in the cached content');
             }
