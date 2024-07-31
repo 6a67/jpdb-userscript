@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.33
+// @version 0.1.34
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -772,6 +772,9 @@
         const kanji = new URLSearchParams(new URL(kanjiElement.href).search).get('k');
         if (!kanji) return;
 
+        const kanjiMeaning = keywordElement.nextSibling.textContent.trim();
+        if (!kanjiMeaning) return;
+
         // Find the element of class "subsection-composed-of-kanji"
         const composedOfElement = document.querySelector('.subsection-composed-of-kanji');
         if (!composedOfElement) return;
@@ -780,7 +783,7 @@
         const components = Array.from(composedOfElement.querySelectorAll('.spelling a'));
         const descriptions = Array.from(composedOfElement.querySelectorAll('.description'));
 
-        let composedText = `${kanji}\nreceive\n\n`;
+        let composedText = `${kanji}\n${kanjiMeaning}\n\n`;
         components.forEach((component, index) => {
             composedText += `${component.textContent}\n${descriptions[index].textContent}\n`;
         });
