@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.31
+// @version 0.1.32
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -811,6 +811,28 @@
         composedLabel.appendChild(buttonContainer);
     }
 
+    function initKanjiCopyButton() {
+        kanjiCopyButton();
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.classList.contains('subsection-composed-of-kanji')) {
+                            kanjiCopyButton();
+                        } else {
+                            node.querySelectorAll('.subsection-composed-of-kanji').forEach((subNode) => {
+                                kanjiCopyButton();
+                                return;
+                            });
+                        }
+                    });
+                }
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -824,7 +846,7 @@
             initKanjiStrokeOrder();
         }
 
-        kanjiCopyButton();
+        initKanjiCopyButton();
     }
 
     try {
