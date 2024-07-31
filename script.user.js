@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.28
+// @version 0.1.29
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -328,6 +328,16 @@
 
             svg.stroke-order-kanji {
                 overflow: visible;
+            }
+
+            /* Blur translation until hovered */
+            .sentence-translation {
+                filter: blur(0.5rem);
+                transition: filter 0.2s;
+            }
+
+            .sentence-translation:hover {
+                filter: none;
             }
         `,
 
