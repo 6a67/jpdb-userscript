@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.29
+// @version 0.1.30
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -338,6 +338,23 @@
 
             .sentence-translation:hover {
                 filter: none;
+            }
+
+            /* Kanji copy button */
+            .subsection-composed-of-kanji:has(> .subsection-label) > .subsection-label {
+                align-items: center;
+            }
+
+            .kanji-copy-button {
+                all: unset !important;
+                margin-left: 0.5em !important;
+                cursor: pointer !important;
+                vertical-align: middle !important;
+            }
+        
+            .kanji-copy-button-svg {
+                fill: var(--subsection-label-color) !important;
+                vertical-align: middle;
             }
         `,
 
@@ -737,6 +754,59 @@
         }
     }
 
+    function kanjiCopyButton() {
+        // Find the element with class "subsection-label" that includes the text "Keyword "
+        const keywordElement = Array.from(document.querySelectorAll('.subsection-label')).find((el) => el.textContent.includes('Keyword'));
+
+        if (!keywordElement) return;
+
+        // Parse the kanji from the associated <a> element
+        const kanjiElement = keywordElement.querySelector('a');
+        if (!kanjiElement || !kanjiElement.href) return;
+
+        const kanji = new URLSearchParams(new URL(kanjiElement.href).search).get('k');
+        if (!kanji) return;
+
+        // Find the element of class "subsection-composed-of-kanji"
+        const composedOfElement = document.querySelector('.subsection-composed-of-kanji');
+        if (!composedOfElement) return;
+
+        // Parse all the kanji and their descriptions
+        const components = Array.from(composedOfElement.querySelectorAll('.spelling a'));
+        const descriptions = Array.from(composedOfElement.querySelectorAll('.description'));
+
+        let composedText = `${kanji}\nreceive\n\n`;
+        components.forEach((component, index) => {
+            composedText += `${component.textContent}\n${descriptions[index].textContent}\n`;
+        });
+
+        // Add a small button next to the "Composed of" label
+        const composedLabel = composedOfElement.querySelector('.subsection-label');
+        if (!composedLabel) return;
+
+        const buttonContainer = document.createElement('button');
+        buttonContainer.classList.add('kanji-copy-button'); // Add a class to the container
+
+        const copyButton = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        copyButton.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        copyButton.setAttribute('viewBox', '0 0 24 24');
+        copyButton.classList.add('kanji-copy-button-svg');
+        copyButton.innerHTML = `<path d="M0 0h24v24H0V0z" fill="none"/><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>`;
+
+        // Match the font size of .subsection-label
+        const subsectionLabelStyle = window.getComputedStyle(composedLabel);
+        copyButton.style.width = subsectionLabelStyle.fontSize;
+        copyButton.style.height = subsectionLabelStyle.fontSize;
+
+        buttonContainer.appendChild(copyButton);
+
+        buttonContainer.addEventListener('click', () => {
+            GM_setClipboard(composedText.trim());
+        });
+
+        composedLabel.appendChild(buttonContainer);
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -749,6 +819,8 @@
         if (CONFIG.enableReplaceKanjiStrokeOrder) {
             initKanjiStrokeOrder();
         }
+
+        kanjiCopyButton();
     }
 
     try {
