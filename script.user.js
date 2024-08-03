@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.35
+// @version 0.1.36
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -287,7 +287,7 @@
                 content: '';
                 position: absolute;
                 top: 0;
-                bottom: calc(2.5% / 2);
+                bottom: 1.875%;
                 left: 0;
                 right: 0;
                 background-image:
