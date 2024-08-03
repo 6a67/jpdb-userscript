@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.34
+// @version 0.1.35
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -441,42 +441,66 @@
         `,
     };
 
-    async function cachedRequest(url, cacheTimeSeconds) {
-        const cacheKey = `cache_${url}`;
-        const cachedData = await GM_getValue(cacheKey);
+    async function httpRequest(url, cacheTimeSeconds = -1) {
+        const CACHE_PREFIX = 'cache_';
 
-        if (cachedData) {
+        if (typeof url !== 'string' || typeof cacheTimeSeconds !== 'number') {
+            throw new TypeError('Invalid input types');
+        }
+
+        const cacheKey = `${CACHE_PREFIX}${url}`;
+        const isCachingEnabled = cacheTimeSeconds > 0;
+
+        async function getCachedData() {
+            const cachedData = await GM_getValue(cacheKey);
+            if (!cachedData) return null;
+
             const { timestamp, data } = cachedData;
-            const isValidCache = cacheTimeSeconds === -1 || (Date.now() - timestamp) / 1000 < cacheTimeSeconds;
+            const isValidCache = (Date.now() - timestamp) / 1000 < cacheTimeSeconds;
 
             if (isValidCache) {
                 console.log('Using cached data');
                 return data;
             }
+
+            return null;
         }
 
-        return new Promise((resolve, reject) => {
-            GM_xmlhttpRequest({
-                method: 'GET',
-                url: url,
-                nocache: true,
-                onload: async function (response) {
-                    if (response.status === 200) {
-                        const newCacheData = {
-                            timestamp: Date.now(),
-                            data: response.responseText,
-                        };
-                        await GM_setValue(cacheKey, newCacheData);
-                        resolve(response.responseText);
-                    } else {
-                        reject(new Error(`Request failed with status ${response.status}`));
-                    }
-                },
-                onerror: function (error) {
-                    reject(error);
-                },
+        function makeRequest() {
+            return new Promise((resolve, reject) => {
+                GM_xmlhttpRequest({
+                    method: 'GET',
+                    url: url,
+                    nocache: true,
+                    onload: async function (response) {
+                        if (response.status === 200) {
+                            if (isCachingEnabled) {
+                                await cacheResponse(response.responseText);
+                            }
+                            resolve(response.responseText);
+                        } else {
+                            reject(new Error(`Request failed with status ${response.status}`));
+                        }
+                    },
+                    onerror: reject,
+                });
             });
-        });
+        }
+
+        async function cacheResponse(responseText) {
+            const newCacheData = {
+                timestamp: Date.now(),
+                data: responseText,
+            };
+            await GM_setValue(cacheKey, newCacheData);
+        }
+
+        if (isCachingEnabled) {
+            const cachedData = await getCachedData();
+            if (cachedData) return cachedData;
+        }
+
+        return makeRequest();
     }
 
     function applyStyles() {
@@ -495,7 +519,7 @@
     function injectFont() {
         const fontUrl = 'https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap';
 
-        const fontStyles = cachedRequest(fontUrl, 24 * 60 * 60);
+        const fontStyles = httpRequest(fontUrl, 24 * 60 * 60);
 
         fontStyles.then((styles) => {
             GM_addStyle(styles);
@@ -656,7 +680,7 @@
         const originalClass = kanjiSvg.getAttribute('class');
 
         try {
-            const svgContent = await cachedRequest(strokeOrderUrl, -1);
+            const svgContent = await httpRequest(strokeOrderUrl, -1);
             replaceSvgWithCached(svgContent);
         } catch (error) {
             console.error('Error fetching kanji stroke order for kanji:', kanjiChar, error);
@@ -856,5 +880,12 @@
     try {
         applyStyles();
     } catch (error) {}
-    document.addEventListener('DOMContentLoaded', init);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        try {
+            init();
+        } catch (error) {}
+    }
 })();
