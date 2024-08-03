@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.37
+// @version 0.1.38
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -27,6 +27,8 @@
 // - - Hides deck list link
 // - Review button styling
 // - Replace kanji stroke order with KanjiVG
+// - Kanji component copy button
+// - Shift+click to move deck to top or bottom
 
 (function () {
     'use strict';
@@ -555,6 +557,10 @@
             const newDeckList = deckListPage.querySelector(CONFIG.deckListSelector);
 
             if (newDeckList) {
+                newDeckList.querySelectorAll('input[name="origin"]').forEach((input) => {
+                    input.value = new URL(window.location.href).pathname;
+                });
+
                 const currentDeckList = document.querySelector(CONFIG.deckListSelector);
                 if (currentDeckList) {
                     const clonedDeckList = newDeckList.cloneNode(true);
@@ -873,6 +879,43 @@
         observer.observe(document.body, { childList: true, subtree: true });
     }
 
+    function shiftMoveDecks() {
+        let originalValues = new Map();
+
+        return function (setValue) {
+            const deckElements = document.querySelectorAll('.deck');
+            deckElements.forEach((deck) => {
+                const inputs = deck.querySelectorAll('input[type="hidden"][name="delta"]');
+                inputs.forEach((input) => {
+                    if (setValue) {
+                        originalValues.set(input, input.value);
+                        input.value *= 9999;
+                    } else {
+                        input.value = originalValues.get(input) || input.value;
+                    }
+                });
+            });
+        };
+    }
+
+    function initShiftMoveDecks() {
+        const mover = shiftMoveDecks();
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Shift') {
+                console.log('Shift key pressed');
+                mover(true);
+            }
+        });
+
+        document.addEventListener('keyup', function (event) {
+            if (event.key === 'Shift') {
+                console.log('Shift key released');
+                mover(false);
+            }
+        });
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -880,6 +923,10 @@
             initLearnPage();
         } else if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && CONFIG.enableButtonStyling) {
             initReviewPage();
+        }
+
+        if (window.location.href === CONFIG.learnPageUrl || window.location.href == CONFIG.deckListPageUrl) {
+            initShiftMoveDecks();
         }
 
         if (CONFIG.enableReplaceKanjiStrokeOrder) {
