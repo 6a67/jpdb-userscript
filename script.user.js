@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.36
+// @version 0.1.37
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -36,7 +36,10 @@
         learnPageUrl: 'https://jpdb.io/learn',
         deckListPageUrl: 'https://jpdb.io/deck-list',
         reviewPageUrlPrefix: 'https://jpdb.io/review',
+        deckListClass: 'deck-list',
         deckListSelector: 'div.deck-list',
+        newDeckListClass: 'injected-deck-list',
+        newDeckListSelector: 'div.injected-deck-list',
         deckListLinkSelector: 'a[href="/deck-list"]',
         reviewButtonSelector: '.review-button-group input[type="submit"]',
         enableReplaceKanjiStrokeOrder: true,
@@ -555,6 +558,7 @@
                 const currentDeckList = document.querySelector(CONFIG.deckListSelector);
                 if (currentDeckList) {
                     const clonedDeckList = newDeckList.cloneNode(true);
+                    clonedDeckList.classList.add(CONFIG.newDeckListClass);
                     currentDeckList.replaceWith(clonedDeckList);
                     applyGridStyle(clonedDeckList);
                     hideDeckListLink();
@@ -730,12 +734,20 @@
         replaceDeckList();
         hideDeckListLink();
 
+        let lastProcessedMutation = null;
+
         const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList' && mutation.target.classList.contains('deck-list')) {
-                    replaceDeckList();
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList' && mutation.target.classList.contains(CONFIG.deckListClass)) {
+                    // Check if this mutation is different from the last processed one
+                    if (mutation !== lastProcessedMutation) {
+                        replaceDeckList();
+                        hideDeckListLink();
+                        lastProcessedMutation = mutation;
+                    }
+                    break; // Exit the loop after processing the first relevant mutation
                 }
-            });
+            }
         });
 
         observer.observe(document.body, { childList: true, subtree: true });
