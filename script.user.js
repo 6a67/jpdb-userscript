@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.38
+// @version 0.1.39
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -29,6 +29,8 @@
 // - Replace kanji stroke order with KanjiVG
 // - Kanji component copy button
 // - Shift+click to move deck to top or bottom
+// - Ctrl+Enter to search in new tab
+// - Pressing `/` focuses search bar or creates a search overlay
 
 (function () {
     'use strict';
@@ -49,6 +51,10 @@
         strokeOrderRepoUrl: 'https://github.com/KanjiVG/kanjivg/raw/master/kanji/',
         kanjiSvgSelector: '.kanji svg',
         kanjiPlainSelector: '.kanji.plain',
+    };
+
+    const STATE = {
+        seachOverlay: null,
     };
 
     const STYLES = {
@@ -228,13 +234,17 @@
             #search-bar-lang {
                 position: absolute;
                 top: 0;
-                right: 1em;
+                right: 0;
                 padding: 0;
                 width: 5em !important;
                 border: none;
                 background-color: transparent;
                 box-shadow: none;
                 z-index: 2;
+            }
+
+            div:has(> input[type="search"]) {
+                position: relative;
             }
 
             #search-bar-lang > option {
@@ -464,7 +474,6 @@
             const isValidCache = (Date.now() - timestamp) / 1000 < cacheTimeSeconds;
 
             if (isValidCache) {
-                console.log('Using cached data');
                 return data;
             }
 
@@ -903,15 +912,158 @@
 
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Shift') {
-                console.log('Shift key pressed');
                 mover(true);
             }
         });
 
         document.addEventListener('keyup', function (event) {
             if (event.key === 'Shift') {
-                console.log('Shift key released');
                 mover(false);
+            }
+        });
+    }
+
+    function handleCtrlEnter(event) {
+        const submittableInputTypes = ['text', 'search'];
+        const input = event.target;
+        const form = input.closest('form');
+
+        if (form && input.matches('input') && submittableInputTypes.includes(input.type)) {
+            event.preventDefault();
+
+            // Create a clone of the form
+            const clonedForm = form.cloneNode(true);
+
+            // Set the target to _blank to open in a new tab
+            clonedForm.target = '_blank';
+
+            // Append the cloned form to the body, submit it, and remove it
+            document.body.appendChild(clonedForm);
+            clonedForm.submit();
+            document.body.removeChild(clonedForm);
+
+            // Attempt to focus on the new tab (may not work in all browsers)
+            window.focus();
+        }
+    }
+
+    function initCtrlEnter() {
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && event.ctrlKey) {
+                handleCtrlEnter(event);
+            }
+        });
+    }
+
+    function isNothingFocused() {
+        const activeElement = document.activeElement;
+        const isBodyFocused = activeElement === document.body;
+        const isContentEditable = activeElement.isContentEditable;
+
+        // ['INPUT', 'TEXTAREA', 'SELECT']
+        return isBodyFocused || (!isContentEditable && !['INPUT', 'TEXTAREA'].includes(activeElement.tagName));
+    }
+
+    // Search overlay functions
+    ////////////////////////////////////////////////////////////////////////////
+    function createSearchOverlay(searchForm) {
+        const searchOverlay = document.createElement('div');
+        searchOverlay.classList.add('injected-search-overlay');
+        searchOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(1px);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 20vh;
+            z-index: 9999;
+        `;
+
+        const searchContainer = document.createElement('div');
+
+        searchContainer.appendChild(searchForm);
+        searchOverlay.appendChild(searchContainer);
+
+        document.body.appendChild(searchOverlay);
+
+        // Focus on the search input
+        const searchInput = searchForm.querySelector('input[type="search"]');
+        if (searchInput) {
+            searchInput.focus();
+        }
+
+        // add glow to search input
+        searchInput.style.cssText += `
+            box-shadow: 0 0 12px var(--link-color);
+            min-width: 40vw;
+            max-width: 80vw;
+        `;
+
+        // Close overlay when clicking outside the search form
+        searchOverlay.addEventListener('click', (e) => {
+            if (e.target === searchOverlay) {
+                removeSearchOverlay();
+            }
+        });
+    }
+
+    function removeSearchOverlay() {
+        const searchOverlay = document.querySelector('.injected-search-overlay');
+        if (searchOverlay) {
+            document.body.removeChild(searchOverlay);
+        }
+    }
+
+    function fetchSearchForm() {
+        const searchOverlay = document.querySelector('.injected-search-overlay');
+        if (searchOverlay) {
+            return;
+        }
+        const response = httpRequest('https://jpdb.io/', 24 * 60 * 60);
+
+        response
+            .then((html) => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const searchForm = doc.querySelector('form[action="/search#a"]');
+                if (searchForm) {
+                    createSearchOverlay(searchForm.cloneNode(true));
+                }
+            })
+            .catch((error) => {
+                console.error('Error fetching search form:', error);
+            });
+    }
+
+    function initRemoveSearchOverlay() {
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                removeSearchOverlay();
+            }
+        });
+    }
+
+    function showSearchBar(event) {
+        if (isNothingFocused()) {
+            event.preventDefault();
+            const searchBar = document.querySelector('input[type="search"]');
+            if (searchBar) {
+                searchBar.focus();
+            } else {
+                fetchSearchForm();
+            }
+        }
+    }
+
+    function initShowSearchBar() {
+        document.addEventListener('keydown', function (event) {
+            if (event.key === '/') {
+                showSearchBar(event);
             }
         });
     }
@@ -934,6 +1086,9 @@
         }
 
         initKanjiCopyButton();
+        initCtrlEnter();
+        initShowSearchBar();
+        initRemoveSearchOverlay();
     }
 
     try {
