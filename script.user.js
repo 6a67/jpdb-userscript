@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.42
+// @version 0.1.43
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -792,11 +792,23 @@
             mutations.forEach((mutation) => {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach((node) => {
-                        node.querySelectorAll(CONFIG.kanjiSvgSelector).forEach(replaceKanjiStrokeOrder);
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            checkAndReplaceKanji(node);
+                        }
                     });
                 }
             });
         });
+        
+        function checkAndReplaceKanji(node) {
+            if (node.matches('svg.kanji') && !node.classList.contains('stroke-order-kanji')) {
+                replaceKanjiStrokeOrder(node);
+            }
+            node.querySelectorAll('svg.kanji:not(.stroke-order-kanji)').forEach((svg) => {
+                replaceKanjiStrokeOrder(svg);
+            });
+        }
+        
         observer.observe(document.body, { childList: true, subtree: true });
 
         if (CONFIG.useFontInsteadOfSvg) {
