@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.43
+// @version 0.1.44
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -269,7 +269,7 @@
                 display: none !important;
             } */
 
-            body > div.container.bugfix:has(a[href*="patreon.com"]) > *:nth-child(n+6) {
+            body > div.container.bugfix:has(a[href*="patreon.com"]):has(form[action*="/review#"]) > *:nth-child(n+6) {
                 display: none !important;
             }
 
