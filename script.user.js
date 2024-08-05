@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.41
+// @version 0.1.42
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -694,8 +694,6 @@
         const strokeOrderUrl = `${CONFIG.strokeOrderRepoUrl}${kanjiUnicode}.svg`;
 
         // Store the original SVG's dimensions
-        const originalWidth = kanjiSvg.getAttribute('width');
-        const originalHeight = kanjiSvg.getAttribute('height');
         const originalClass = kanjiSvg.getAttribute('class');
 
         try {
@@ -723,9 +721,6 @@
         }
 
         function applySvgAttributes(newSvg) {
-            newSvg.setAttribute('width', originalWidth);
-            newSvg.setAttribute('height', originalHeight);
-
             if (!newSvg.getAttribute('viewBox')) {
                 const viewBox = `0 0 ${newSvg.getAttribute('width')} ${newSvg.getAttribute('height')}`;
                 newSvg.setAttribute('viewBox', viewBox);
