@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.44
+// @version 0.1.45
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -245,6 +245,7 @@
 
             div:has(> input[type="search"]) {
                 position: relative;
+                z-index: 0;
             }
 
             #search-bar-lang > option {
