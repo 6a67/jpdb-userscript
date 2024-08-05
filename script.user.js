@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.40
+// @version 0.1.41
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -959,7 +959,6 @@
         const activeElement = document.activeElement;
         const isBodyFocused = activeElement === document.body;
         const isContentEditable = activeElement.isContentEditable;
-        console.log('isBodyFocused', isBodyFocused, 'isContentEditable', isContentEditable, 'activeElement', activeElement.type);
 
         // ['INPUT', 'TEXTAREA', 'SELECT']
         // return isBodyFocused || (!isContentEditable && !['INPUT', 'TEXTAREA'].includes(activeElement.tagName));
