@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.45
+// @version 0.1.46
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -35,26 +35,26 @@
 (function () {
     'use strict';
 
+    let USER_SETTINGS = {
+        enableButtonStyling: GM_getValue('enableButtonStyling', true),
+        enableReplaceKanjiStrokeOrder: GM_getValue('enableReplaceKanjiStrokeOrder', true),
+        useFontInsteadOfSvg: GM_getValue('useFontInsteadOfSvg', false),
+    };
+
     const CONFIG = {
-        enableButtonStyling: true,
         learnPageUrl: 'https://jpdb.io/learn',
         deckListPageUrl: 'https://jpdb.io/deck-list',
         reviewPageUrlPrefix: 'https://jpdb.io/review',
+        settingsPageUrl: 'https://jpdb.io/settings',
         deckListClass: 'deck-list',
         deckListSelector: 'div.deck-list',
         newDeckListClass: 'injected-deck-list',
         newDeckListSelector: 'div.injected-deck-list',
         deckListLinkSelector: 'a[href="/deck-list"]',
         reviewButtonSelector: '.review-button-group input[type="submit"]',
-        enableReplaceKanjiStrokeOrder: true,
-        useFontInsteadOfSvg: false,
         strokeOrderRepoUrl: 'https://github.com/KanjiVG/kanjivg/raw/master/kanji/',
         kanjiSvgSelector: '.kanji svg',
         kanjiPlainSelector: '.kanji.plain',
-    };
-
-    const STATE = {
-        seachOverlay: null,
     };
 
     const STYLES = {
@@ -520,13 +520,13 @@
 
     function applyStyles() {
         GM_addStyle(STYLES.main);
-        if (CONFIG.enableButtonStyling) {
+        if (USER_SETTINGS.enableButtonStyling) {
             GM_addStyle(STYLES.button);
         }
-        if (CONFIG.enableReplaceKanjiStrokeOrder && CONFIG.useFontInsteadOfSvg) {
+        if (USER_SETTINGS.enableReplaceKanjiStrokeOrder && USER_SETTINGS.useFontInsteadOfSvg) {
             GM_addStyle(STYLES.kanjiFont);
         }
-        if (CONFIG.enableReplaceKanjiStrokeOrder && !CONFIG.useFontInsteadOfSvg) {
+        if (USER_SETTINGS.enableReplaceKanjiStrokeOrder && !USER_SETTINGS.useFontInsteadOfSvg) {
             GM_addStyle(STYLES.hideKanjiSvg);
         }
     }
@@ -734,7 +734,7 @@
 
     // This does external requests to github.com
     function replaceKanjiStrokeOrder() {
-        if (CONFIG.useFontInsteadOfSvg) {
+        if (USER_SETTINGS.useFontInsteadOfSvg) {
             replaceKanjiStrokeOrderFont();
         } else {
             replaceKanjiStrokeOrderSvg();
@@ -800,7 +800,7 @@
                 }
             });
         });
-        
+
         function checkAndReplaceKanji(node) {
             if (node.matches('svg.kanji') && !node.classList.contains('stroke-order-kanji')) {
                 replaceKanjiStrokeOrder(node);
@@ -809,10 +809,10 @@
                 replaceKanjiStrokeOrder(svg);
             });
         }
-        
+
         observer.observe(document.body, { childList: true, subtree: true });
 
-        if (CONFIG.useFontInsteadOfSvg) {
+        if (USER_SETTINGS.useFontInsteadOfSvg) {
             window.addEventListener('load', resizeKanjiStrokeOrderFont);
             window.addEventListener('resize', resizeKanjiStrokeOrderFont);
         }
@@ -1076,13 +1076,84 @@
             }
         });
     }
+    ////////////////////////////////////////////////////////////////////////////
+
+    function saveUserSettings() {
+        GM_setValue('enableButtonStyling', USER_SETTINGS.enableButtonStyling);
+        GM_setValue('enableReplaceKanjiStrokeOrder', USER_SETTINGS.enableReplaceKanjiStrokeOrder);
+        GM_setValue('useFontInsteadOfSvg', USER_SETTINGS.useFontInsteadOfSvg);
+    }
+
+    // Function to add settings section to the form
+    function addSettingsSection() {
+        const settingsForm = document.querySelector('form[action="/settings"]');
+        if (settingsForm) {
+            const formDivs = settingsForm.querySelectorAll('div');
+            const submitButtonDiv = Array.from(formDivs)
+                .reverse()
+                .find((div) => div.querySelector('input[type="submit"]'));
+
+            if (submitButtonDiv) {
+                const settingsHTML = `
+                    <h6>${GM_info.script.name} Settings</h6>
+                    <div>
+                        <div class="checkbox">
+                            <input type="checkbox" id="enableButtonStyling" name="enableButtonStyling" ${
+                                USER_SETTINGS.enableButtonStyling ? 'checked' : ''
+                            }>
+                            <label for="enableButtonStyling">Enable button styling</label>
+                        </div>
+                        <p style="margin-left: 2rem; opacity: 0.8;">
+                            Adds styling to the buttons on the review page.
+                        </p>
+                        <div class="checkbox">
+                            <input type="checkbox" id="enableReplaceKanjiStrokeOrder" name="enableReplaceKanjiStrokeOrder" ${
+                                USER_SETTINGS.enableReplaceKanjiStrokeOrder ? 'checked' : ''
+                            }>
+                            <label for="enableReplaceKanjiStrokeOrder">Enable replace kanji stroke order</label>
+                        </div>
+                        <p style="margin-left: 2rem; opacity: 0.8;">
+                            Replaces the stroke order with <a href="https://kanjivg.tagaini.net/">KanjiVG</a>.
+                        </p>
+                        <div class="checkbox">
+                            <input type="checkbox" id="useFontInsteadOfSvg" name="useFontInsteadOfSvg" ${
+                                USER_SETTINGS.useFontInsteadOfSvg ? 'checked' : ''
+                            }>
+                            <label for="useFontInsteadOfSvg">Use font instead of SVG</label>
+                        </div>
+                        <p style="margin-left: 2rem; opacity: 0.8;">
+                            If the previous option is enabled, this will use a <a href="https://www.nihilist.org.uk/">font</a> for the stroke order instead of an SVG.
+                        </p>
+                    </div>
+                    <div style="padding-bottom: 1.5rem;"></div>
+                `;
+                submitButtonDiv.previousSibling.insertAdjacentHTML('beforebegin', settingsHTML);
+
+                // Add event listener to the form submission
+                settingsForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+
+                    // Update USER_SETTINGS based on checkbox values
+                    USER_SETTINGS.enableButtonStyling = document.getElementById('enableButtonStyling').checked;
+                    USER_SETTINGS.enableReplaceKanjiStrokeOrder = document.getElementById('enableReplaceKanjiStrokeOrder').checked;
+                    USER_SETTINGS.useFontInsteadOfSvg = document.getElementById('useFontInsteadOfSvg').checked;
+
+                    // Save settings
+                    saveUserSettings();
+
+                    // Submit the form
+                    this.submit();
+                });
+            }
+        }
+    }
 
     function init() {
         injectFont();
         applyStyles();
         if (window.location.href === CONFIG.learnPageUrl) {
             initLearnPage();
-        } else if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && CONFIG.enableButtonStyling) {
+        } else if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && USER_SETTINGS.enableButtonStyling) {
             initReviewPage();
         }
 
@@ -1090,7 +1161,11 @@
             initShiftMoveDecks();
         }
 
-        if (CONFIG.enableReplaceKanjiStrokeOrder) {
+        if (window.location.href === CONFIG.settingsPageUrl) {
+            addSettingsSection();
+        }
+
+        if (USER_SETTINGS.enableReplaceKanjiStrokeOrder) {
             initKanjiStrokeOrder();
         }
 
