@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.47
+// @version 0.1.48
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -39,6 +39,7 @@
         enableButtonStyling: GM_getValue('enableButtonStyling', true),
         enableReplaceKanjiStrokeOrder: GM_getValue('enableReplaceKanjiStrokeOrder', true),
         useFontInsteadOfSvg: GM_getValue('useFontInsteadOfSvg', false),
+        searchBarOverlayTransition: GM_getValue('searchBarOverlayTransition', false),
     };
 
     const CONFIG = {
@@ -55,6 +56,7 @@
         strokeOrderRepoUrl: 'https://github.com/KanjiVG/kanjivg/raw/master/kanji/',
         kanjiSvgSelector: '.kanji svg',
         kanjiPlainSelector: '.kanji.plain',
+        searchOverlayTransitionDuration: 200,
     };
 
     const STYLES = {
@@ -985,17 +987,32 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(1px);
+            background-color: ${USER_SETTINGS.searchBarOverlayTransition ? 'rgba(0, 0, 0, 0)' : 'rgba(0, 0, 0, 0.7)'};
+            backdrop-filter: blur(${USER_SETTINGS.searchBarOverlayTransition ? '0' : '1'}px);
             display: flex;
             justify-content: center;
             align-items: flex-start;
             padding-top: 20vh;
             z-index: 9999;
+            ${
+                USER_SETTINGS.searchBarOverlayTransition
+                    ? 'transition: background-color ' +
+                      CONFIG.searchOverlayTransitionDuration +
+                      'ms ease, backdrop-filter ' +
+                      CONFIG.searchOverlayTransitionDuration +
+                      'ms ease;'
+                    : ''
+            }
         `;
 
         const searchContainer = document.createElement('div');
-
+        if (USER_SETTINGS.searchBarOverlayTransition) {
+            searchContainer.style.cssText = `
+                transform: scale(0.75);
+                opacity: 0;
+                transition: transform ${CONFIG.searchOverlayTransitionDuration}ms ease, opacity ${CONFIG.searchOverlayTransitionDuration}ms ease;
+            `;
+        }
         searchContainer.appendChild(searchForm);
         searchOverlay.appendChild(searchContainer);
 
@@ -1007,12 +1024,22 @@
             searchInput.focus();
         }
 
-        // add glow to search input
+        // Add glow to search input
         searchInput.style.cssText += `
             box-shadow: 0 0 12px var(--link-color);
             min-width: 40vw;
             max-width: 80vw;
         `;
+
+        if (USER_SETTINGS.searchBarOverlayTransition) {
+            // Trigger the fade-in and pop-up effect
+            setTimeout(() => {
+                searchOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                searchOverlay.style.backdropFilter = 'blur(1px)';
+                searchContainer.style.transform = 'scale(1)';
+                searchContainer.style.opacity = '1';
+            }, 10);
+        }
 
         // Close overlay when clicking outside the search form
         searchOverlay.addEventListener('click', (e) => {
@@ -1020,12 +1047,29 @@
                 removeSearchOverlay();
             }
         });
+
+        return searchOverlay;
     }
 
     function removeSearchOverlay() {
         const searchOverlay = document.querySelector('.injected-search-overlay');
         if (searchOverlay) {
-            document.body.removeChild(searchOverlay);
+            const searchContainer = searchOverlay.firstElementChild;
+
+            if (USER_SETTINGS.searchBarOverlayTransition) {
+                // Trigger the fade-out and shrink effect
+                searchOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0)';
+                searchOverlay.style.backdropFilter = 'blur(0px)';
+                searchContainer.style.transform = 'scale(0.75)';
+                searchContainer.style.opacity = '0';
+
+                // Remove the overlay after the transition
+                setTimeout(() => {
+                    document.body.removeChild(searchOverlay);
+                }, CONFIG.searchOverlayTransitionDuration);
+            } else {
+                document.body.removeChild(searchOverlay);
+            }
         }
     }
 
@@ -1083,6 +1127,7 @@
         GM_setValue('enableButtonStyling', USER_SETTINGS.enableButtonStyling);
         GM_setValue('enableReplaceKanjiStrokeOrder', USER_SETTINGS.enableReplaceKanjiStrokeOrder);
         GM_setValue('useFontInsteadOfSvg', USER_SETTINGS.useFontInsteadOfSvg);
+        GM_setValue('searchBarOverlayTransition', USER_SETTINGS.searchBarOverlayTransition);
     }
 
     // Function to add settings section to the form
@@ -1107,6 +1152,12 @@
                         <p style="margin-left: 2rem; opacity: 0.8;">
                             Adds styling to the buttons on the review page.
                         </p>
+                        <div class="checkbox">
+                            <input type="checkbox" id="searchBarOverlayTransition" name="searchBarOverlayTransition" ${
+                                USER_SETTINGS.searchBarOverlayTransition ? 'checked' : ''
+                            }>
+                            <label for="searchBarOverlayTransition">Enable transition effect for the search overlay</label>
+                        </div>
                         <div class="checkbox">
                             <input type="checkbox" id="enableReplaceKanjiStrokeOrder" name="enableReplaceKanjiStrokeOrder" ${
                                 USER_SETTINGS.enableReplaceKanjiStrokeOrder ? 'checked' : ''
@@ -1138,6 +1189,7 @@
                     USER_SETTINGS.enableButtonStyling = document.getElementById('enableButtonStyling').checked;
                     USER_SETTINGS.enableReplaceKanjiStrokeOrder = document.getElementById('enableReplaceKanjiStrokeOrder').checked;
                     USER_SETTINGS.useFontInsteadOfSvg = document.getElementById('useFontInsteadOfSvg').checked;
+                    USER_SETTINGS.searchBarOverlayTransition = document.getElementById('searchBarOverlayTransition').checked;
 
                     // Save settings
                     saveUserSettings();
