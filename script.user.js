@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.46
+// @version 0.1.47
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -129,6 +129,7 @@
             
             :is(html.dark-mode) .main.column {
                 --outline-input-color: var(--easy-button-color);
+                --button-focused-border-color: var(--easy-button-color);
             }
 
             :is(html.dark-mode) .highlight {
