@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.48
+// @version 0.1.49
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -375,6 +375,11 @@
             .kanji-copy-button-svg {
                 fill: var(--subsection-label-color) !important;
                 vertical-align: middle;
+            }
+
+            /* Remove shadow from review bar */
+            .review-button-group {
+                box-shadow: none !important;
             }
         `,
 
