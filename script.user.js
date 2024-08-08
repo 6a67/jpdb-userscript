@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.49
+// @version 0.1.50
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -706,7 +706,7 @@
         const originalClass = kanjiSvg.getAttribute('class');
 
         try {
-            const svgContent = await httpRequest(strokeOrderUrl, -1);
+            const svgContent = await httpRequest(strokeOrderUrl, 30 * 24 * 60 * 60);
             replaceSvgWithCached(svgContent);
         } catch (error) {
             console.error('Error fetching kanji stroke order for kanji:', kanjiChar, error);
