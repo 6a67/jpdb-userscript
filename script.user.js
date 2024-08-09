@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.52
+// @version 0.1.53
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1049,6 +1049,24 @@
             }, 10);
         }
 
+        // Prevent any hotkey events from triggering
+        searchOverlay.addEventListener('keydown', function (event) {
+            if (!['Escape', 'Enter', '/'].includes(event.key) && !event.ctrlKey && !event.altKey && !event.metaKey) {
+                event.stopPropagation();
+            }
+        });
+
+        // Close the overlay when the Escape key is pressed
+        document.addEventListener(
+            'keydown',
+            function (event) {
+                if (event.key === 'Escape') {
+                    removeSearchOverlay();
+                }
+            },
+            { once: true }
+        );
+
         // Close overlay when clicking outside the search form
         searchOverlay.addEventListener('click', (e) => {
             if (e.target === searchOverlay) {
@@ -1100,14 +1118,6 @@
             .catch((error) => {
                 console.error('Error fetching search form:', error);
             });
-    }
-
-    function initRemoveSearchOverlay() {
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') {
-                removeSearchOverlay();
-            }
-        });
     }
 
     function showSearchBar(event) {
@@ -1233,7 +1243,6 @@
         initKanjiCopyButton();
         initCtrlEnter();
         initShowSearchBar();
-        initRemoveSearchOverlay();
     }
 
     try {
