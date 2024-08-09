@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.51
+// @version 0.1.52
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -880,7 +880,7 @@
         });
 
         // Dispatch a custom event to notify other scripts what the components are
-        document.dispatchEvent(new CustomEvent('kanjiComponents', { detail: { componentString: composedText } }));
+        document.dispatchEvent(new CustomEvent('kanjiComponents', { detail: { componentString: composedText.trim() } }));
 
         composedLabel.appendChild(buttonContainer);
     }
