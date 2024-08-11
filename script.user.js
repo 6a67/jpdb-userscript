@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.53
+// @version 0.1.54
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1053,6 +1053,9 @@
         searchOverlay.addEventListener('keydown', function (event) {
             if (!['Escape', 'Enter', '/'].includes(event.key) && !event.ctrlKey && !event.altKey && !event.metaKey) {
                 event.stopPropagation();
+            }
+            if (event.key === 'Escape') {
+                removeSearchOverlay();
             }
         });
 
