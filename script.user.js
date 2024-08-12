@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.55
+// @version 0.1.56
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -35,11 +35,76 @@
 (function () {
     'use strict';
 
-    let USER_SETTINGS = {
-        enableButtonStyling: GM_getValue('enableButtonStyling', true),
-        enableReplaceKanjiStrokeOrder: GM_getValue('enableReplaceKanjiStrokeOrder', true),
-        useFontInsteadOfSvg: GM_getValue('useFontInsteadOfSvg', false),
-        searchBarOverlayTransition: GM_getValue('searchBarOverlayTransition', false),
+    class UserSetting {
+        constructor(name, defaultValue, shortDescription, longDescription = '') {
+            this.name = name;
+            this.value = GM_getValue(name, defaultValue);
+            this.shortDescription = shortDescription;
+            this.longDescription = longDescription;
+
+            // Create a function that can be called and also act as an object
+            const settingFunction = (...args) => {
+                if (args.length > 0) {
+                    this.setValue(args[0]);
+                    return this.getValue();
+                } else {
+                    return this.getValue();
+                }
+            };
+
+            // Add methods to the function
+            settingFunction.getValue = this.getValue.bind(this);
+            settingFunction.setValue = this.setValue.bind(this);
+            settingFunction.getName = this.getName.bind(this);
+            settingFunction.getShortDescription = this.getShortDescription.bind(this);
+            settingFunction.getLongDescription = this.getLongDescription.bind(this);
+
+            // Return the function with added methods
+            return settingFunction;
+        }
+
+        getValue() {
+            return this.value;
+        }
+
+        setValue(newValue) {
+            this.value = newValue;
+            GM_setValue(this.name, newValue);
+        }
+
+        getName() {
+            return this.name;
+        }
+
+        getShortDescription() {
+            return this.shortDescription;
+        }
+
+        getLongDescription() {
+            return this.longDescription;
+        }
+    }
+
+    const USER_SETTINGS = {
+        enableButtonStyling: new UserSetting(
+            'enableButtonStyling',
+            true,
+            'Enable button styling',
+            'Adds styling to the buttons on the review page.'
+        ),
+        enableReplaceKanjiStrokeOrder: new UserSetting(
+            'enableReplaceKanjiStrokeOrder',
+            true,
+            'Enable replace kanji stroke order',
+            'Replaces the stroke order with KanjiVG.'
+        ),
+        useFontInsteadOfSvg: new UserSetting(
+            'useFontInsteadOfSvg',
+            false,
+            'Use font instead of SVG',
+            'If the previous option is enabled, this will use a font for the stroke order instead of an SVG.'
+        ),
+        searchBarOverlayTransition: new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay'),
     };
 
     const CONFIG = {
@@ -539,13 +604,13 @@
 
     function applyStyles() {
         GM_addStyle(STYLES.main);
-        if (USER_SETTINGS.enableButtonStyling) {
+        if (USER_SETTINGS.enableButtonStyling()) {
             GM_addStyle(STYLES.button);
         }
-        if (USER_SETTINGS.enableReplaceKanjiStrokeOrder && USER_SETTINGS.useFontInsteadOfSvg) {
+        if (USER_SETTINGS.enableReplaceKanjiStrokeOrder() && USER_SETTINGS.useFontInsteadOfSvg()) {
             GM_addStyle(STYLES.kanjiFont);
         }
-        if (USER_SETTINGS.enableReplaceKanjiStrokeOrder && !USER_SETTINGS.useFontInsteadOfSvg) {
+        if (USER_SETTINGS.enableReplaceKanjiStrokeOrder() && !USER_SETTINGS.useFontInsteadOfSvg()) {
             GM_addStyle(STYLES.hideKanjiSvg);
         }
     }
@@ -753,7 +818,7 @@
 
     // This does external requests to github.com
     function replaceKanjiStrokeOrder() {
-        if (USER_SETTINGS.useFontInsteadOfSvg) {
+        if (USER_SETTINGS.useFontInsteadOfSvg()) {
             replaceKanjiStrokeOrderFont();
         } else {
             replaceKanjiStrokeOrderSvg();
@@ -831,7 +896,7 @@
 
         observer.observe(document.body, { childList: true, subtree: true });
 
-        if (USER_SETTINGS.useFontInsteadOfSvg) {
+        if (USER_SETTINGS.useFontInsteadOfSvg()) {
             window.addEventListener('load', resizeKanjiStrokeOrderFont);
             window.addEventListener('resize', resizeKanjiStrokeOrderFont);
         }
@@ -1006,15 +1071,15 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: ${USER_SETTINGS.searchBarOverlayTransition ? 'rgba(0, 0, 0, 0)' : 'rgba(0, 0, 0, 0.7)'};
-            backdrop-filter: blur(${USER_SETTINGS.searchBarOverlayTransition ? '0' : '1'}px);
+            background-color: ${USER_SETTINGS.searchBarOverlayTransition() ? 'rgba(0, 0, 0, 0)' : 'rgba(0, 0, 0, 0.7)'};
+            backdrop-filter: blur(${USER_SETTINGS.searchBarOverlayTransition() ? '0' : '1'}px);
             display: flex;
             justify-content: center;
             align-items: flex-start;
             padding-top: 20vh;
             z-index: 9999;
             ${
-                USER_SETTINGS.searchBarOverlayTransition
+                USER_SETTINGS.searchBarOverlayTransition()
                     ? 'transition: background-color ' +
                       CONFIG.searchOverlayTransitionDuration +
                       'ms ease, backdrop-filter ' +
@@ -1025,7 +1090,7 @@
         `;
 
         const searchContainer = document.createElement('div');
-        if (USER_SETTINGS.searchBarOverlayTransition) {
+        if (USER_SETTINGS.searchBarOverlayTransition()) {
             searchContainer.style.cssText = `
                 transform: scale(0.75);
                 opacity: 0;
@@ -1050,7 +1115,7 @@
             max-width: 80vw;
         `;
 
-        if (USER_SETTINGS.searchBarOverlayTransition) {
+        if (USER_SETTINGS.searchBarOverlayTransition()) {
             // Trigger the fade-in and pop-up effect
             setTimeout(() => {
                 searchOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
@@ -1096,7 +1161,7 @@
         if (searchOverlay) {
             const searchContainer = searchOverlay.firstElementChild;
 
-            if (USER_SETTINGS.searchBarOverlayTransition) {
+            if (USER_SETTINGS.searchBarOverlayTransition()) {
                 // Trigger the fade-out and shrink effect
                 searchOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0)';
                 searchOverlay.style.backdropFilter = 'blur(0px)';
@@ -1155,13 +1220,6 @@
     }
     ////////////////////////////////////////////////////////////////////////////
 
-    function saveUserSettings() {
-        GM_setValue('enableButtonStyling', USER_SETTINGS.enableButtonStyling);
-        GM_setValue('enableReplaceKanjiStrokeOrder', USER_SETTINGS.enableReplaceKanjiStrokeOrder);
-        GM_setValue('useFontInsteadOfSvg', USER_SETTINGS.useFontInsteadOfSvg);
-        GM_setValue('searchBarOverlayTransition', USER_SETTINGS.searchBarOverlayTransition);
-    }
-
     // Function to add settings section to the form
     function addSettingsSection() {
         const settingsForm = document.querySelector('form[action="/settings"]');
@@ -1172,59 +1230,67 @@
                 .find((div) => div.querySelector('input[type="submit"]'));
 
             if (submitButtonDiv) {
+                let sectionsHTML = '';
+                for (const setting of Object.values(USER_SETTINGS)) {
+                    // check if type is boolean
+                    if (typeof setting() === 'boolean') {
+                        sectionsHTML += `
+                            <div class="checkbox">
+                                <input type="checkbox" id="${setting.getName()}" name="${setting.getName()}" ${setting() ? 'checked' : ''}>
+                                <label for="${setting.getName()}">${setting.getShortDescription()}</label>
+                            </div>
+                            ${
+                                setting.getLongDescription()
+                                    ? `<p style="margin-left: 2rem; opacity: 0.8;">\n${setting.getLongDescription()}\n</p>`
+                                    : ''
+                            }
+                        `;
+                    } else if (typeof setting() === 'number') {
+                        sectionsHTML += `
+                            <div>
+                                <label for="${setting.getName()}">${setting.getShortDescription()}</label>
+                                <input style="max-width: 16rem;" type="number" id="${setting.getName()}" name="${setting.getName()}" min="1" max="99999" value="${setting()}">
+                                ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
+                            </div>
+                        `;
+                    } else {
+                        sectionsHTML += `
+                            <div>
+                                <label for="${setting.getName()}">${setting.getShortDescription()}</label>
+                                <input style="max-width: 16rem;" type="text" id="${setting.getName()}" name="${setting.getName()}" value="${setting()}">
+                                ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
+                            </div>
+                        `;
+                    }
+                }
+
                 const settingsHTML = `
                     <h6>${GM_info.script.name} Settings</h6>
                     <div>
-                        <div class="checkbox">
-                            <input type="checkbox" id="enableButtonStyling" name="enableButtonStyling" ${
-                                USER_SETTINGS.enableButtonStyling ? 'checked' : ''
-                            }>
-                            <label for="enableButtonStyling">Enable button styling</label>
-                        </div>
-                        <p style="margin-left: 2rem; opacity: 0.8;">
-                            Adds styling to the buttons on the review page.
-                        </p>
-                        <div class="checkbox">
-                            <input type="checkbox" id="searchBarOverlayTransition" name="searchBarOverlayTransition" ${
-                                USER_SETTINGS.searchBarOverlayTransition ? 'checked' : ''
-                            }>
-                            <label for="searchBarOverlayTransition">Enable transition effect for the search overlay</label>
-                        </div>
-                        <div class="checkbox">
-                            <input type="checkbox" id="enableReplaceKanjiStrokeOrder" name="enableReplaceKanjiStrokeOrder" ${
-                                USER_SETTINGS.enableReplaceKanjiStrokeOrder ? 'checked' : ''
-                            }>
-                            <label for="enableReplaceKanjiStrokeOrder">Enable replace kanji stroke order</label>
-                        </div>
-                        <p style="margin-left: 2rem; opacity: 0.8;">
-                            Replaces the stroke order with <a href="https://kanjivg.tagaini.net/">KanjiVG</a>.
-                        </p>
-                        <div class="checkbox">
-                            <input type="checkbox" id="useFontInsteadOfSvg" name="useFontInsteadOfSvg" ${
-                                USER_SETTINGS.useFontInsteadOfSvg ? 'checked' : ''
-                            }>
-                            <label for="useFontInsteadOfSvg">Use font instead of SVG</label>
-                        </div>
-                        <p style="margin-left: 2rem; opacity: 0.8;">
-                            If the previous option is enabled, this will use a <a href="https://www.nihilist.org.uk/">font</a> for the stroke order instead of an SVG.
-                        </p>
+                        ${sectionsHTML}
                     </div>
                     <div style="padding-bottom: 1.5rem;"></div>
                 `;
+
                 submitButtonDiv.previousSibling.insertAdjacentHTML('beforebegin', settingsHTML);
 
                 // Add event listener to the form submission
                 settingsForm.addEventListener('submit', function (e) {
                     e.preventDefault();
 
-                    // Update USER_SETTINGS based on checkbox values
-                    USER_SETTINGS.enableButtonStyling = document.getElementById('enableButtonStyling').checked;
-                    USER_SETTINGS.enableReplaceKanjiStrokeOrder = document.getElementById('enableReplaceKanjiStrokeOrder').checked;
-                    USER_SETTINGS.useFontInsteadOfSvg = document.getElementById('useFontInsteadOfSvg').checked;
-                    USER_SETTINGS.searchBarOverlayTransition = document.getElementById('searchBarOverlayTransition').checked;
-
-                    // Save settings
-                    saveUserSettings();
+                    // Update USER_SETTINGS based on the values
+                    for (const setting of Object.values(USER_SETTINGS)) {
+                        const input = settingsForm.querySelector(`input[name="${setting.getName()}"]`);
+                        if (input) {
+                            if (typeof setting() === 'boolean') {
+                                setting(input.checked);
+                            } else if (typeof setting() === 'number') {
+                                setting(Number(input.value));
+                            } else {
+                                setting(input.value);
+                            }
+                        }
+                    }
 
                     // Submit the form
                     this.submit();
@@ -1238,7 +1304,7 @@
         applyStyles();
         if (window.location.href === CONFIG.learnPageUrl) {
             initLearnPage();
-        } else if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && USER_SETTINGS.enableButtonStyling) {
+        } else if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && USER_SETTINGS.enableButtonStyling()) {
             initReviewPage();
         }
 
@@ -1250,7 +1316,7 @@
             addSettingsSection();
         }
 
-        if (USER_SETTINGS.enableReplaceKanjiStrokeOrder) {
+        if (USER_SETTINGS.enableReplaceKanjiStrokeOrder()) {
             initKanjiStrokeOrder();
         }
 
