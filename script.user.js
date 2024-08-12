@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.54
+// @version 0.1.55
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -465,10 +465,10 @@
         `,
     };
 
-    async function httpRequest(url, cacheTimeSeconds = -1) {
+    async function httpRequest(url, cacheTimeSeconds = -1, allowStaleCache = false) {
         const CACHE_PREFIX = 'cache_';
 
-        if (typeof url !== 'string' || typeof cacheTimeSeconds !== 'number') {
+        if (typeof url !== 'string' || typeof cacheTimeSeconds !== 'number' || typeof allowStaleCache !== 'boolean') {
             throw new TypeError('Invalid input types');
         }
 
@@ -480,16 +480,19 @@
             if (!cachedData) return null;
 
             const { timestamp, data } = cachedData;
-            const isValidCache = (Date.now() - timestamp) / 1000 < cacheTimeSeconds;
+            const cacheAge = (Date.now() - timestamp) / 1000;
+            const isValidCache = cacheAge < cacheTimeSeconds;
 
             if (isValidCache) {
-                return data;
+                return { data, isStale: false };
+            } else if (allowStaleCache) {
+                return { data, isStale: true };
             }
 
             return null;
         }
 
-        function makeRequest() {
+        async function makeRequest() {
             return new Promise((resolve, reject) => {
                 GM_xmlhttpRequest({
                     method: 'GET',
@@ -519,8 +522,16 @@
         }
 
         if (isCachingEnabled) {
-            const cachedData = await getCachedData();
-            if (cachedData) return cachedData;
+            const cachedResult = await getCachedData();
+            if (cachedResult) {
+                if (!cachedResult.isStale) {
+                    return cachedResult.data;
+                } else {
+                    // Return stale data and update cache in the background
+                    makeRequest(); // Silently update cache
+                    return cachedResult.data;
+                }
+            }
         }
 
         return makeRequest();
@@ -1107,7 +1118,7 @@
         if (searchOverlay) {
             return;
         }
-        const response = httpRequest('https://jpdb.io/', 24 * 60 * 60);
+        const response = httpRequest('https://jpdb.io/', 24 * 60 * 60, true);
 
         response
             .then((html) => {
