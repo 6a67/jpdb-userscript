@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.56
+// @version 0.1.57
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -105,6 +105,7 @@
             'If the previous option is enabled, this will use a font for the stroke order instead of an SVG.'
         ),
         searchBarOverlayTransition: new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay'),
+        alwaysShowKanjiGrid: new UserSetting('alwaysShowKanjiGrid', false, 'Always show kanji grid'),
     };
 
     const CONFIG = {
@@ -342,51 +343,6 @@
                 display: none !important;
             }
 
-
-            /* Kanji Grid on hover */
-            .vbox .kanji.plain {
-                position: relative;
-                display: inline-block;
-            }
-
-            /* Kanji Grid for review */
-            .hbox:has(> .kanji.plain):hover::before {
-                content: '';
-                position: absolute;
-                top: 0%;
-                left: calc(50% - 8rem);
-                background-image:
-                    linear-gradient(to right, var(--deeper-background-color) 5%, transparent 5%),
-                    linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
-                background-size: calc(calc(100% - 2.5%) / 2) calc(calc(100% - 2.5%) / 2);
-                z-index: 1;
-                border-radius: inherit;
-
-                width: 16rem;
-                height: 16rem;
-            }
-
-            /* Kanji Grid for search results */
-            .vbox:has(> .kanji.plain) .kanji.plain:hover::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                bottom: 1.875%;
-                left: 0;
-                right: 0;
-                background-image:
-                    linear-gradient(to right, var(--deeper-background-color) 5%, transparent 5%),
-                    linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
-                background-size: calc(calc(100% - 2.5%) / 2) calc(calc(100% - 2.5%) / 2);
-                z-index: 1;
-                border-radius: 0.5rem;
-            }
-            
-            .kanji.plain svg {
-                position: relative;
-                z-index: 2;
-            }
-
             /* Kanji Stroke Order */
             svg.stroke-order-kanji [style*='stroke:'] {
                 stroke: var(--text-color) !important;
@@ -528,6 +484,96 @@
                 display: unset !important;
             }
         `,
+
+        kanjiGridOnHover: `
+            .vbox .kanji.plain {
+                position: relative;
+                display: inline-block;
+            }
+
+            /* Kanji Grid for review */
+            .hbox:has(> .kanji.plain):hover::before {
+                content: '';
+                position: absolute;
+                top: 0%;
+                left: calc(50% - 8rem);
+                background-image:
+                    linear-gradient(to right, var(--deeper-background-color) 5%, transparent 5%),
+                    linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
+                background-size: calc(calc(100% - 2.5%) / 2) calc(calc(100% - 2.5%) / 2);
+                z-index: 1;
+                border-radius: inherit;
+
+                width: 16rem;
+                height: 16rem;
+            }
+
+            /* Kanji Grid for search results */
+            .vbox:has(> .kanji.plain) .kanji.plain:hover::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                bottom: 1.875%;
+                left: 0;
+                right: 0;
+                background-image:
+                    linear-gradient(to right, var(--deeper-background-color) 5%, transparent 5%),
+                    linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
+                background-size: calc(calc(100% - 2.5%) / 2) calc(calc(100% - 2.5%) / 2);
+                z-index: 1;
+                border-radius: 0.5rem;
+            }
+            
+            .kanji.plain svg {
+                position: relative;
+                z-index: 2;
+            }
+        `,
+
+        kanjiGridAlways: `
+            .vbox .kanji.plain {
+                position: relative;
+                display: inline-block;
+            }
+
+            /* Kanji Grid for review */
+            .hbox:has(> .kanji.plain)::before {
+                content: '';
+                position: absolute;
+                top: 0%;
+                left: calc(50% - 8rem);
+                background-image:
+                    linear-gradient(to right, var(--deeper-background-color) 5%, transparent 5%),
+                    linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
+                background-size: calc(calc(100% - 2.5%) / 2) calc(calc(100% - 2.5%) / 2);
+                z-index: 1;
+                border-radius: inherit;
+
+                width: 16rem;
+                height: 16rem;
+            }
+
+            /* Kanji Grid for search results */
+            .vbox:has(> .kanji.plain) .kanji.plain::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                bottom: 1.875%;
+                left: 0;
+                right: 0;
+                background-image:
+                    linear-gradient(to right, var(--deeper-background-color) 5%, transparent 5%),
+                    linear-gradient(to bottom, var(--deeper-background-color) 5%, transparent 5%);
+                background-size: calc(calc(100% - 2.5%) / 2) calc(calc(100% - 2.5%) / 2);
+                z-index: 1;
+                border-radius: 0.5rem;
+            }
+            
+            .kanji.plain svg {
+                position: relative;
+                z-index: 2;
+            }
+        `,
     };
 
     async function httpRequest(url, cacheTimeSeconds = -1, allowStaleCache = false) {
@@ -606,6 +652,11 @@
         GM_addStyle(STYLES.main);
         if (USER_SETTINGS.enableButtonStyling()) {
             GM_addStyle(STYLES.button);
+        }
+        if (USER_SETTINGS.alwaysShowKanjiGrid()) {
+            GM_addStyle(STYLES.kanjiGridAlways);
+        } else {
+            GM_addStyle(STYLES.kanjiGridOnHover);
         }
         if (USER_SETTINGS.enableReplaceKanjiStrokeOrder() && USER_SETTINGS.useFontInsteadOfSvg()) {
             GM_addStyle(STYLES.kanjiFont);
