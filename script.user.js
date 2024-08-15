@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.58
+// @version 0.1.59
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -576,10 +576,15 @@
         `,
     };
 
-    async function httpRequest(url, cacheTimeSeconds = -1, allowStaleCache = false) {
+    async function httpRequest(url, cacheTimeSeconds = -1, allowStaleCache = false, allowAnyResponseCode = false) {
         const CACHE_PREFIX = 'cache_';
 
-        if (typeof url !== 'string' || typeof cacheTimeSeconds !== 'number' || typeof allowStaleCache !== 'boolean') {
+        if (
+            typeof url !== 'string' ||
+            typeof cacheTimeSeconds !== 'number' ||
+            typeof allowStaleCache !== 'boolean' ||
+            typeof allowAnyResponseCode !== 'boolean'
+        ) {
             throw new TypeError('Invalid input types');
         }
 
@@ -590,17 +595,11 @@
             const cachedData = await GM_getValue(cacheKey);
             if (!cachedData) return null;
 
-            const { timestamp, data } = cachedData;
+            const { timestamp, data, status } = cachedData;
             const cacheAge = (Date.now() - timestamp) / 1000;
-            const isValidCache = cacheAge < cacheTimeSeconds;
+            const isStale = cacheAge > cacheTimeSeconds;
 
-            if (isValidCache) {
-                return { data, isStale: false };
-            } else if (allowStaleCache) {
-                return { data, isStale: true };
-            }
-
-            return null;
+            return { data, status, isStale };
         }
 
         async function makeRequest() {
@@ -610,42 +609,50 @@
                     url: url,
                     nocache: true,
                     onload: async function (response) {
-                        if (response.status === 200) {
-                            if (isCachingEnabled) {
-                                await cacheResponse(response.responseText);
-                            }
-                            resolve(response.responseText);
-                        } else {
-                            reject(new Error(`Request failed with status ${response.status}`));
+                        if (isCachingEnabled) {
+                            await cacheResponse(response.responseText, response.status);
                         }
+                        resolve({ data: response.responseText, status: response.status });
                     },
                     onerror: reject,
                 });
             });
         }
 
-        async function cacheResponse(responseText) {
+        async function cacheResponse(responseText, status) {
             const newCacheData = {
                 timestamp: Date.now(),
                 data: responseText,
+                status: status,
             };
             await GM_setValue(cacheKey, newCacheData);
+        }
+
+        function handleResponse(data, status) {
+            if (status !== 200) {
+                throw new Error(`Request failed with status ${status}`);
+            }
+            return data;
         }
 
         if (isCachingEnabled) {
             const cachedResult = await getCachedData();
             if (cachedResult) {
-                if (!cachedResult.isStale) {
-                    return cachedResult.data;
-                } else {
-                    // Return stale data and update cache in the background
-                    makeRequest(); // Silently update cache
-                    return cachedResult.data;
+                const { isStale, status, data } = cachedResult;
+
+                if (!isStale && (status === 200 || allowAnyResponseCode)) {
+                    return handleResponse(data, status);
+                }
+
+                if (isStale && allowStaleCache && (status === 200 || allowAnyResponseCode)) {
+                    makeRequest().catch(() => {});
+                    return handleResponse(data, status);
                 }
             }
         }
 
-        return makeRequest();
+        const { data, status } = await makeRequest();
+        return handleResponse(data, status);
     }
 
     function applyStyles() {
@@ -833,7 +840,7 @@
         const originalClass = kanjiSvg.getAttribute('class');
 
         try {
-            const svgContent = await httpRequest(strokeOrderUrl, 30 * 24 * 60 * 60, true);
+            const svgContent = await httpRequest(strokeOrderUrl, 30 * 24 * 60 * 60, true, true);
             replaceSvgWithCached(svgContent);
         } catch (error) {
             console.error('Error fetching kanji stroke order for kanji:', kanjiChar, error);
