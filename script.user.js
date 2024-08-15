@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.62
+// @version 0.1.63
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -398,6 +398,10 @@
 
             .sentence-translation:hover {
                 filter: none;
+            }
+
+            .unblur {
+                filter: blur(0) !important;
             }
 
             /* Kanji copy button */
@@ -1063,11 +1067,8 @@
 
         const files = await getAllFiles(CONFIG.strokeOrderRepo, CONFIG.strokeOrderFolder, CONFIG.strokeOrderBranch);
         const fileUrls = files
-            .filter((file) => file.path.split("/").pop().split(".")[0].length === 5 && file.path.endsWith('.svg'))
-            .map(
-                (file) =>
-                    `${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}/${file.path}`
-            );
+            .filter((file) => file.path.split('/').pop().split('.')[0].length === 5 && file.path.endsWith('.svg'))
+            .map((file) => `${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}/${file.path}`);
 
         const progressBar = document.getElementById('kanji-cache-progress');
         progressBar.style.display = 'grid';
@@ -1617,6 +1618,14 @@
         }
     }
 
+    function unblurSentenceOnClick() {
+        document.addEventListener('click', function (event) {
+            if (event.target.classList.contains('sentence-translation')) {
+                event.target.classList.toggle('unblur');
+            }
+        });
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -1641,6 +1650,8 @@
         initKanjiCopyButton();
         initCtrlEnter();
         initShowSearchBar();
+
+        unblurSentenceOnClick();
     }
 
     try {
