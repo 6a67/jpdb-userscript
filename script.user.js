@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.59
+// @version 0.1.60
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -9,8 +9,11 @@
 // @grant GM_setValue
 // @grant GM_getValue
 // @grant GM_setClipboard
+// @grant GM_listValues
+// @grant GM_deleteValue
 // @connect github.com
 // @run-at document-start
+// @require https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
 // @updateURL https://raw.githubusercontent.com/6a67/jpdb-userscript/main/script.user.js
 // ==/UserScript==
 
@@ -108,6 +111,10 @@
         alwaysShowKanjiGrid: new UserSetting('alwaysShowKanjiGrid', false, 'Always show kanji grid'),
     };
 
+    let STATE = {
+        currentlyBuildingKanjiCache: false,
+    };
+
     const CONFIG = {
         learnPageUrl: 'https://jpdb.io/learn',
         deckListPageUrl: 'https://jpdb.io/deck-list',
@@ -119,10 +126,22 @@
         newDeckListSelector: 'div.injected-deck-list',
         deckListLinkSelector: 'a[href="/deck-list"]',
         reviewButtonSelector: '.review-button-group input[type="submit"]',
-        strokeOrderRepoUrl: 'https://github.com/KanjiVG/kanjivg/raw/master/kanji/',
+        // strokeOrderRepoUrl: 'https://github.com/KanjiVG/kanjivg/raw/master/kanji/',
+        strokeOrderHost: 'https://github.com',
+        strokeOrderRawHost: 'https://raw.githubusercontent.com',
+        strokeOrderRepo: 'KanjiVG/kanjivg',
+        strokeOrderFolder: 'kanji',
+        strokeOrderBranch: 'master',
         kanjiSvgSelector: '.kanji svg',
         kanjiPlainSelector: '.kanji.plain',
         searchOverlayTransitionDuration: 200,
+        cachePrefix: 'cache_',
+        indexedDBName: 'HttpRequestCache',
+        indexedDBStoreName: 'responses',
+    };
+
+    const DEBUG = {
+        enableCacheLogs: false,
     };
 
     const STYLES = {
@@ -576,30 +595,120 @@
         `,
     };
 
-    async function httpRequest(url, cacheTimeSeconds = -1, allowStaleCache = false, allowAnyResponseCode = false) {
-        const CACHE_PREFIX = 'cache_';
+    function log(...args) {
+        if (DEBUG.enableCacheLogs) {
+            console.log(...args);
+        }
+    }
 
+    async function httpRequest(url, cacheTimeSeconds = -1, allowStaleCache = false, allowAnyResponseCode = false, useIndexedDB = false) {
         if (
             typeof url !== 'string' ||
             typeof cacheTimeSeconds !== 'number' ||
             typeof allowStaleCache !== 'boolean' ||
-            typeof allowAnyResponseCode !== 'boolean'
+            typeof allowAnyResponseCode !== 'boolean' ||
+            typeof useIndexedDB !== 'boolean'
         ) {
             throw new TypeError('Invalid input types');
         }
 
-        const cacheKey = `${CACHE_PREFIX}${url}`;
+        const cacheKey = `${CONFIG.cachePrefix}${url}`;
         const isCachingEnabled = cacheTimeSeconds > 0;
 
+        const normalChars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?-_';
+
+        function compressData(data) {
+            const compressed = LZString.compressToBase64(JSON.stringify(data));
+            return mapToNormalChars(compressed);
+        }
+
+        function decompressData(compressedData) {
+            const unmapped = unmapFromNormalChars(compressedData);
+            return JSON.parse(LZString.decompressFromBase64(unmapped));
+        }
+
+        function mapToNormalChars(input) {
+            return input
+                .split('')
+                .map((char) => {
+                    const index = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='.indexOf(char);
+                    return normalChars[index] || char;
+                })
+                .join('');
+        }
+
+        function unmapFromNormalChars(input) {
+            return input
+                .split('')
+                .map((char) => {
+                    const index = normalChars.indexOf(char);
+                    return index !== -1 ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='[index] : char;
+                })
+                .join('');
+        }
+
         async function getCachedData() {
-            const cachedData = await GM_getValue(cacheKey);
-            if (!cachedData) return null;
+            if (useIndexedDB) {
+                return new Promise((resolve) => {
+                    const request = indexedDB.open(CONFIG.indexedDBName, 1);
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        db.createObjectStore(CONFIG.indexedDBStoreName, { keyPath: 'key' });
+                    };
+                    request.onsuccess = (event) => {
+                        const db = event.target.result;
+                        const transaction = db.transaction([CONFIG.indexedDBStoreName], 'readonly');
+                        const store = transaction.objectStore(CONFIG.indexedDBStoreName);
+                        const getRequest = store.get(cacheKey);
+                        getRequest.onsuccess = () => {
+                            if (!getRequest.result) {
+                                resolve(null);
+                                return;
+                            }
+                            const cachedData = decompressData(getRequest.result.value);
+                            const { timestamp, response } = cachedData;
+                            const cacheAge = (Date.now() - timestamp) / 1000;
+                            const isStale = cacheAge > cacheTimeSeconds;
+                            resolve({ isStale, response, source: 'IndexedDB' });
+                        };
+                        getRequest.onerror = () => resolve(null);
+                    };
+                    request.onerror = () => resolve(null);
+                });
+            } else {
+                const compressedCachedData = await GM_getValue(cacheKey);
+                if (!compressedCachedData) return null;
+                const cachedData = decompressData(compressedCachedData);
+                const { timestamp, response } = cachedData;
+                const cacheAge = (Date.now() - timestamp) / 1000;
+                const isStale = cacheAge > cacheTimeSeconds;
+                return { isStale, response, source: 'GM Storage' };
+            }
+        }
 
-            const { timestamp, data, status } = cachedData;
-            const cacheAge = (Date.now() - timestamp) / 1000;
-            const isStale = cacheAge > cacheTimeSeconds;
+        async function cacheResponse(response) {
+            const cacheData = {
+                timestamp: Date.now(),
+                response: response,
+            };
+            const compressedCacheData = compressData(cacheData);
 
-            return { data, status, isStale };
+            if (useIndexedDB) {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(CONFIG.indexedDBName, 1);
+                    request.onsuccess = (event) => {
+                        const db = event.target.result;
+                        const transaction = db.transaction([CONFIG.indexedDBStoreName], 'readwrite');
+                        const store = transaction.objectStore(CONFIG.indexedDBStoreName);
+                        const putRequest = store.put({ key: cacheKey, value: compressedCacheData });
+                        putRequest.onsuccess = () => resolve();
+                        putRequest.onerror = () => reject(putRequest.error);
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            } else {
+                await GM_setValue(cacheKey, compressedCacheData);
+            }
         }
 
         async function makeRequest() {
@@ -610,49 +719,78 @@
                     nocache: true,
                     onload: async function (response) {
                         if (isCachingEnabled) {
-                            await cacheResponse(response.responseText, response.status);
+                            await cacheResponse(response);
                         }
-                        resolve({ data: response.responseText, status: response.status });
+                        resolve(response);
                     },
                     onerror: reject,
                 });
             });
         }
 
-        async function cacheResponse(responseText, status) {
-            const newCacheData = {
-                timestamp: Date.now(),
-                data: responseText,
-                status: status,
-            };
-            await GM_setValue(cacheKey, newCacheData);
-        }
-
-        function handleResponse(data, status) {
-            if (status !== 200) {
-                throw new Error(`Request failed with status ${status}`);
+        function handleResponse(response, source = 'Network') {
+            if (response.status !== 200) {
+                throw new Error(`Request failed with status ${response.status}`);
             }
-            return data;
+            log(`Response retrieved from: ${source}`);
+            return response;
         }
 
         if (isCachingEnabled) {
             const cachedResult = await getCachedData();
             if (cachedResult) {
-                const { isStale, status, data } = cachedResult;
+                const { isStale, response, source } = cachedResult;
 
-                if (!isStale && (status === 200 || allowAnyResponseCode)) {
-                    return handleResponse(data, status);
+                if (!isStale && (response.status === 200 || allowAnyResponseCode)) {
+                    log(`Using fresh cached response from ${source}`);
+                    return handleResponse(response, source);
                 }
 
-                if (isStale && allowStaleCache && (status === 200 || allowAnyResponseCode)) {
+                if (isStale && allowStaleCache && (response.status === 200 || allowAnyResponseCode)) {
+                    log(`Using stale cached response from ${source} and updating in background`);
                     makeRequest().catch(() => {});
-                    return handleResponse(data, status);
+                    return handleResponse(response, `${source} (stale)`);
                 }
             }
         }
 
-        const { data, status } = await makeRequest();
-        return handleResponse(data, status);
+        log('Fetching fresh response from network');
+        const response = await makeRequest();
+        return handleResponse(response);
+    }
+
+    function purgeHttpRequestCache() {
+        return new Promise((resolve, reject) => {
+            const deleteRequest = indexedDB.deleteDatabase(CONFIG.indexedDBName);
+
+            deleteRequest.onerror = (event) => {
+                console.error(`Error deleting database ${CONFIG.indexedDBName}:`, event.target.error);
+                reject(event.target.error);
+            };
+
+            deleteRequest.onsuccess = (event) => {
+                console.log(`Database ${CONFIG.indexedDBName} successfully deleted`);
+                resolve();
+            };
+
+            deleteRequest.onblocked = (event) => {
+                console.warn(`Database ${CONFIG.indexedDBName} deletion blocked. Please close all other tabs with this site open.`);
+            };
+        });
+    }
+
+    function removeAllGMValues() {
+        const keys = GM_listValues();
+        keys.forEach((key) => {
+            GM_deleteValue(key);
+        });
+
+        function verifyDeletion() {
+            const remainingKeys = GM_listValues();
+            return remainingKeys.length === 0;
+        }
+
+        return verifyDeletion();
     }
 
     function applyStyles() {
@@ -673,14 +811,14 @@
         }
     }
 
-    function injectFont() {
+    async function injectFont() {
         const fontUrl = 'https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap';
 
-        const fontStyles = httpRequest(fontUrl, 24 * 60 * 60);
+        const fontStyles = await httpRequest(fontUrl, 24 * 60 * 60);
 
-        fontStyles.then((styles) => {
-            GM_addStyle(styles);
-        });
+        if (fontStyles) {
+            GM_addStyle(fontStyles.responseText);
+        }
     }
 
     function applyGridStyle(element) {
@@ -834,13 +972,13 @@
         if (!kanjiSvg || !kanjiPlain) return;
         const kanjiChar = kanjiPlain.getAttribute('href').split(/[?#]/)[0].split('/').pop();
         const kanjiUnicode = kanjiChar.codePointAt(0).toString(16).padStart(5, '0');
-        const strokeOrderUrl = `${CONFIG.strokeOrderRepoUrl}${kanjiUnicode}.svg`;
+        const strokeOrderUrl = `${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}/${CONFIG.strokeOrderFolder}/${kanjiUnicode}.svg`;
 
         // Store the original SVG's dimensions
         const originalClass = kanjiSvg.getAttribute('class');
 
         try {
-            const svgContent = await httpRequest(strokeOrderUrl, 30 * 24 * 60 * 60, true, true);
+            const svgContent = (await httpRequest(strokeOrderUrl, 30 * 24 * 60 * 60, true, true, true)).responseText;
             replaceSvgWithCached(svgContent);
         } catch (error) {
             console.error('Error fetching kanji stroke order for kanji:', kanjiChar, error);
@@ -881,6 +1019,77 @@
         } else {
             replaceKanjiStrokeOrderSvg();
         }
+    }
+
+    // Debug function to cache all stroke order SVGs
+    async function cacheAllKanjiStrokeOrder() {
+        if (STATE.currentlyBuildingKanjiCache) {
+            return;
+        }
+
+        STATE.currentlyBuildingKanjiCache = true;
+
+        async function getAllFiles(repo, path, branch = 'main') {
+            const baseUrl = 'https://api.github.com';
+
+            // Function to make API requests
+            async function fetchGitHubAPI(url) {
+                const response = await httpRequest(url, -1);
+                if (response.status !== 200) {
+                    throw new Error(`GitHub API request failed: ${response.status} ${response.statusText}`);
+                }
+                return JSON.parse(response.responseText);
+            }
+
+            try {
+                // Get the latest commit SHA for the specified branch
+                const branchUrl = `${baseUrl}/repos/${repo}/branches/${branch}`;
+                const branchData = await fetchGitHubAPI(branchUrl);
+                const latestSha = branchData.commit.sha;
+
+                // Get the tree using the recursive parameter
+                const treeUrl = `${baseUrl}/repos/${repo}/git/trees/${latestSha}?recursive=1`;
+                const treeData = await fetchGitHubAPI(treeUrl);
+
+                // Filter files in the specified path
+                const files = treeData.tree.filter((item) => item.type === 'blob' && item.path.startsWith(path));
+
+                return files;
+            } catch (error) {
+                console.error('Error fetching files:', error);
+                throw error;
+            }
+        }
+
+        const files = await getAllFiles(CONFIG.strokeOrderRepo, CONFIG.strokeOrderFolder, CONFIG.strokeOrderBranch);
+        const fileUrls = files.map(
+            (file) => `${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}/${file.path}`
+        );
+
+        const progressBar = document.getElementById('kanji-cache-progress');
+        progressBar.style.display = 'grid';
+
+        const progress = progressBar.children[0];
+        const progressText = progressBar.children[1].children[0];
+
+        const total = fileUrls.length;
+        let count = 0;
+        const promises = [];
+        while (fileUrls.length > 0) {
+            const urls = fileUrls.splice(0, 50);
+            const batchPromises = urls.map((url) =>
+                httpRequest(url, 30 * 24 * 60 * 60, false, false, true).then(() => {
+                    count++;
+                    progress.style.width = `${(count / total) * 100}%`;
+                    progressText.textContent = `${count}/${total} (${((count / total) * 100).toFixed(2)}%)`;
+                })
+            );
+            promises.push(Promise.all(batchPromises));
+            await Promise.all(promises);
+        }
+
+        progressBar.style.display = 'none';
+        STATE.currentlyBuildingKanjiCache = false;
     }
 
     function initLearnPage() {
@@ -1026,9 +1235,9 @@
             mutations.forEach((mutation) => {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach((node) => {
-                        if (node.classList.contains('subsection-composed-of-kanji')) {
+                        if (node && node.classList && node.classList.contains('subsection-composed-of-kanji')) {
                             kanjiCopyButton();
-                        } else {
+                        } else if (node && node.querySelectorAll) {
                             node.querySelectorAll('.subsection-composed-of-kanji').forEach((subNode) => {
                                 kanjiCopyButton();
                                 return;
@@ -1236,25 +1445,19 @@
         }
     }
 
-    function fetchSearchForm() {
+    async function fetchSearchForm() {
         const searchOverlay = document.querySelector('.injected-search-overlay');
         if (searchOverlay) {
             return;
         }
-        const response = httpRequest('https://jpdb.io/', 24 * 60 * 60, true);
+        const response = await httpRequest('https://jpdb.io/', 24 * 60 * 60, true);
 
-        response
-            .then((html) => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const searchForm = doc.querySelector('form[action="/search#a"]');
-                if (searchForm) {
-                    createSearchOverlay(searchForm.cloneNode(true));
-                }
-            })
-            .catch((error) => {
-                console.error('Error fetching search form:', error);
-            });
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(response.responseText, 'text/html');
+        const searchForm = doc.querySelector('form[action="/search#a"]');
+        if (searchForm) {
+            createSearchOverlay(searchForm.cloneNode(true));
+        }
     }
 
     function showSearchBar(event) {
@@ -1322,15 +1525,69 @@
                     }
                 }
 
+                const buildKanjiCache = `
+                    <div style="padding-bottom: 1rem;"></div>
+                    <div>
+                        <div style="display: flex; flex-direction: row; gap: 1rem; align-items: center;">
+                            <div id="build-kanji-cache">
+                                <input type="submit" class="outline" style="font-weight: bold;" value="Build Kanji Cache">
+                            </div>
+                            <p style="opacity: 0.8;">This will cache all stroke order SVGs for faster loading times.</p>
+                        </div>
+                        <div id="kanji-cache-progress" style=" background-color: var(--progress-bar-background); min-height: 0.5rem; width: 100%; border-radius: 4px; /* display: grid; */ display: none; "> <div style=" z-index: 1; background: var(--progress-bar-foreground); width: progress_here; border-radius: 4px; grid-row: 1; grid-column: 1; border-top-right-radius: 0; border-bottom-right-radius: 0; " ></div> <div style=" z-index: 2; font-weight: bold; text-align: center; grid-row: 1; grid-column: 1; text-align: right; text-shadow: var(--progress-bar-text-shadow) 1px 1px 1px; color: white; padding: 0.2rem 0.45rem; font-size: 75%; display: flex; justify-content: space-between; column-gap: 1rem; " > <div>0/0 (0%)</div> </div></div>
+                    </div>
+                `;
+
+                const resetSettings = `
+                    <div style="padding-bottom: 1rem;"></div>
+                    <div>
+                        <div style="display: flex; flex-direction: row; gap: 1rem;">
+                            <div id="reset-settings"><input type="submit" class="outline v1" style="font-weight: bold;" value="Reset Userscript Settings"></div>
+                            <div id="reset-kanji-cache"><input type="submit" class="outline v1" style="font-weight: bold;" value="Reset Kanji Cache"></div>
+                        </div>
+                        <p style="opacity: 0.8;"></p>
+                    </div>
+                `;
+
                 const settingsHTML = `
                     <h6>${GM_info.script.name} Settings</h6>
                     <div>
                         ${sectionsHTML}
+                        ${buildKanjiCache}
+                        ${resetSettings}
                     </div>
                     <div style="padding-bottom: 1.5rem;"></div>
                 `;
 
                 submitButtonDiv.previousSibling.insertAdjacentHTML('beforebegin', settingsHTML);
+
+                // call cacheAllKanjiStrokeOrder function when button is clicked
+                const buildKanjiCacheButton = document.getElementById('build-kanji-cache');
+                buildKanjiCacheButton.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    cacheAllKanjiStrokeOrder();
+                });
+
+                // call resetSettings function when button is clicked
+                const resetSettingsButton = document.getElementById('reset-settings');
+                resetSettingsButton.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    const successful = removeAllGMValues();
+                    const parentDiv = resetSettingsButton.parentElement.parentElement;
+                    const p = parentDiv.querySelector('p');
+                    p.textContent = successful ? 'Settings reset successfully.' : 'Settings reset failed.';
+                    settingsForm.submit();
+                });
+
+                const resetKanjiCacheButton = document.getElementById('reset-kanji-cache');
+                resetKanjiCacheButton.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    purgeHttpRequestCache();
+                    const parentDiv = resetKanjiCacheButton.parentElement.parentElement;
+                    const p = parentDiv.querySelector('p');
+                    p.textContent = 'Kanji cache reset.';
+                    settingsForm.submit();
+                });
 
                 // Add event listener to the form submission
                 settingsForm.addEventListener('submit', function (e) {
