@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.60
+// @version 0.1.61
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1062,9 +1062,12 @@
         }
 
         const files = await getAllFiles(CONFIG.strokeOrderRepo, CONFIG.strokeOrderFolder, CONFIG.strokeOrderBranch);
-        const fileUrls = files.map(
-            (file) => `${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}/${file.path}`
-        );
+        const fileUrls = files
+            .filter((file) => file.path.split("/").pop().split(".")[0].length === 5 && file.path.endsWith('.svg'))
+            .map(
+                (file) =>
+                    `${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}/${file.path}`
+            );
 
         const progressBar = document.getElementById('kanji-cache-progress');
         progressBar.style.display = 'grid';
