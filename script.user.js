@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.61
+// @version 0.1.62
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1533,7 +1533,7 @@
                     <div>
                         <div style="display: flex; flex-direction: row; gap: 1rem; align-items: center;">
                             <div id="build-kanji-cache">
-                                <input type="submit" class="outline" style="font-weight: bold;" value="Build Kanji Cache">
+                                <input type="submit" class="outline" value="Build Kanji Cache">
                             </div>
                             <p style="opacity: 0.8;">This will cache all stroke order SVGs for faster loading times.</p>
                         </div>
@@ -1545,8 +1545,8 @@
                     <div style="padding-bottom: 1rem;"></div>
                     <div>
                         <div style="display: flex; flex-direction: row; gap: 1rem;">
-                            <div id="reset-settings"><input type="submit" class="outline v1" style="font-weight: bold;" value="Reset Userscript Settings"></div>
-                            <div id="reset-kanji-cache"><input type="submit" class="outline v1" style="font-weight: bold;" value="Reset Kanji Cache"></div>
+                            <div id="reset-settings"><input type="submit" class="outline v1" value="Reset Userscript Settings"></div>
+                            <div id="reset-kanji-cache"><input type="submit" class="outline v1" value="Reset Kanji Cache"></div>
                         </div>
                         <p style="opacity: 0.8;"></p>
                     </div>
