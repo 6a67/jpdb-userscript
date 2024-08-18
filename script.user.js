@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.68
+// @version 0.1.69
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -39,11 +39,15 @@
     'use strict';
 
     class UserSetting {
-        constructor(name, defaultValue, shortDescription, longDescription = '') {
+        constructor(name, defaultValue, shortDescription, longDescription = '', possibleValues = null) {
             this.name = name;
-            this.value = GM_getValue(name, defaultValue);
+            this.defaultValue = defaultValue;
             this.shortDescription = shortDescription;
             this.longDescription = longDescription;
+            this.possibleValues = possibleValues;
+
+            // Initialize the value, ensuring it's within possible values if specified
+            this.value = this.validateValue(GM_getValue(name, defaultValue));
 
             // Create a function that can be called and also act as an object
             const settingFunction = (...args) => {
@@ -61,9 +65,18 @@
             settingFunction.getName = this.getName.bind(this);
             settingFunction.getShortDescription = this.getShortDescription.bind(this);
             settingFunction.getLongDescription = this.getLongDescription.bind(this);
+            settingFunction.getPossibleValues = this.getPossibleValues.bind(this);
 
             // Return the function with added methods
             return settingFunction;
+        }
+
+        validateValue(value) {
+            if (this.possibleValues && !this.possibleValues.includes(value)) {
+                console.warn(`Invalid value for ${this.name}. Using default value.`);
+                return this.defaultValue;
+            }
+            return value;
         }
 
         getValue() {
@@ -71,8 +84,11 @@
         }
 
         setValue(newValue) {
-            this.value = newValue;
-            GM_setValue(this.name, newValue);
+            const validatedValue = this.validateValue(newValue);
+            if (validatedValue !== this.value) {
+                this.value = validatedValue;
+                GM_setValue(this.name, validatedValue);
+            }
         }
 
         getName() {
@@ -85,6 +101,10 @@
 
         getLongDescription() {
             return this.longDescription;
+        }
+
+        getPossibleValues() {
+            return this.possibleValues;
         }
     }
 
@@ -109,7 +129,7 @@
         ),
         searchBarOverlayTransition: new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay'),
         alwaysShowKanjiGrid: new UserSetting('alwaysShowKanjiGrid', false, 'Always show kanji grid'),
-        enableTranslation: new UserSetting('enableTranslation', false, 'Enable partial translation to Japanese'),
+        translationLanguage: new UserSetting('translation', 'None', 'Enable partial translation', null, ['None', 'ja']),
     };
 
     let STATE = {
@@ -145,19 +165,22 @@
         enableCacheLogs: false,
     };
 
-    const TRANSLATION_JA = {
-        'Kanji': '漢字',
-        'Type a word, a kanji, or a sentence': '単語、漢字、または文章を入力してください',
-        'Settings': '設定',
-        'Logout': 'ログアウト',
-        'Stats': '統計',
-        'Vocabulary': '単語',
-        'Component': '部品',
-        '✘ Nothing': '全然',
-        '✘ Something': '何か',
-        '✔ Hard': '難しい',
-        '✔ Okay': '大丈夫',
-        '✔ Easy': '簡単',
+    const TRANSLATIONS = {
+        'None': {},
+        'ja': {
+            'Kanji': '漢字',
+            'Type a word, a kanji, or a sentence': '単語、漢字、または文章を入力してください',
+            'Settings': '設定',
+            'Logout': 'ログアウト',
+            'Stats': '統計',
+            'Vocabulary': '単語',
+            'Component': '部品',
+            '✘ Nothing': '全然',
+            '✘ Something': '何か',
+            '✔ Hard': '難しい',
+            '✔ Okay': '大丈夫',
+            '✔ Easy': '簡単',
+        },
     };
 
     const STYLES = {
@@ -1516,7 +1539,22 @@
                 let sectionsHTML = '';
                 for (const setting of Object.values(USER_SETTINGS)) {
                     // check if type is boolean
-                    if (typeof setting() === 'boolean') {
+                    if (setting.getPossibleValues()) {
+                        sectionsHTML += `
+                            <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 1rem;">
+                                <label style="margin-left: 2rem;" for="${setting.getName()}">${setting.getShortDescription()}</label>
+                                <select id="${setting.getName()}" name="${setting.getName()}" style="flex-grow: 0;flex-shrink: 1;width: auto;margin-left: 0.3rem; font-family: monospace;">
+                                    ${setting
+                                        .getPossibleValues()
+                                        .map(
+                                            (value) => `<option value="${value}" ${setting() === value ? 'selected' : ''}>${value}</option>`
+                                        )
+                                        .join('')}
+                                </select>
+                                ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
+                            </div>
+                        `;
+                    } else if (typeof setting() === 'boolean') {
                         sectionsHTML += `
                             <div class="checkbox">
                                 <input type="checkbox" id="${setting.getName()}" name="${setting.getName()}" ${setting() ? 'checked' : ''}>
@@ -1618,6 +1656,7 @@
                     // Update USER_SETTINGS based on the values
                     for (const setting of Object.values(USER_SETTINGS)) {
                         const input = settingsForm.querySelector(`input[name="${setting.getName()}"]`);
+                        const select = settingsForm.querySelector(`select[name="${setting.getName()}"]`);
                         if (input) {
                             if (typeof setting() === 'boolean') {
                                 setting(input.checked);
@@ -1626,6 +1665,8 @@
                             } else {
                                 setting(input.value);
                             }
+                        } else if (select) {
+                            setting(select.value);
                         }
                     }
 
@@ -1650,7 +1691,7 @@
 
         // Function to translate text
         function translate(text) {
-            return TRANSLATION_JA[text.trim()] || text;
+            return TRANSLATIONS[USER_SETTINGS.translationLanguage()][text.trim()] || text;
         }
 
         // Function to translate an element and its attributes
@@ -1702,7 +1743,7 @@
 
             // Add lang="ja" attribute if translation occurred
             if (wasTranslated && !element.hasAttribute('lang')) {
-                element.setAttribute('lang', 'ja');
+                element.setAttribute('lang', USER_SETTINGS.translationLanguage());
             }
         }
 
@@ -1772,7 +1813,7 @@
             initKanjiStrokeOrder();
         }
 
-        if (USER_SETTINGS.enableTranslation()) {
+        if (USER_SETTINGS.translationLanguage() !== 'None') {
             initTranslation();
         }
 
