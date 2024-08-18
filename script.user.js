@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.70
+// @version 0.1.71
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -175,6 +175,7 @@
             'Stats': '統計',
             'Vocabulary': '単語',
             'Component': '部品',
+            'Show answer': '答えを表示',
             '✘ Nothing': '全然',
             '✘ Something': '何か',
             '✔ Hard': '難しい',
