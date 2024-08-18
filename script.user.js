@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.71
+// @version 0.1.72
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -108,30 +108,6 @@
         }
     }
 
-    const USER_SETTINGS = {
-        enableButtonStyling: new UserSetting(
-            'enableButtonStyling',
-            true,
-            'Enable button styling',
-            'Adds styling to the buttons on the review page.'
-        ),
-        enableReplaceKanjiStrokeOrder: new UserSetting(
-            'enableReplaceKanjiStrokeOrder',
-            true,
-            'Enable replace kanji stroke order',
-            'Replaces the stroke order with KanjiVG.'
-        ),
-        useFontInsteadOfSvg: new UserSetting(
-            'useFontInsteadOfSvg',
-            false,
-            'Use font instead of SVG',
-            'If the previous option is enabled, this will use a font for the stroke order instead of an SVG.'
-        ),
-        searchBarOverlayTransition: new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay'),
-        alwaysShowKanjiGrid: new UserSetting('alwaysShowKanjiGrid', false, 'Always show kanji grid'),
-        translationLanguage: new UserSetting('translation', 'None', 'Enable partial translation', null, ['None', 'ja']),
-    };
-
     let STATE = {
         currentlyBuildingKanjiCache: false,
     };
@@ -183,6 +159,30 @@
             '✔ Easy': '簡単',
             'config.reviewButtonFontWeight': '500',
         },
+    };
+
+    const USER_SETTINGS = {
+        enableButtonStyling: new UserSetting(
+            'enableButtonStyling',
+            true,
+            'Enable button styling',
+            'Adds styling to the buttons on the review page.'
+        ),
+        enableReplaceKanjiStrokeOrder: new UserSetting(
+            'enableReplaceKanjiStrokeOrder',
+            true,
+            'Enable replace kanji stroke order',
+            'Replaces the stroke order with KanjiVG.'
+        ),
+        useFontInsteadOfSvg: new UserSetting(
+            'useFontInsteadOfSvg',
+            false,
+            'Use font instead of SVG',
+            'If the previous option is enabled, this will use a font for the stroke order instead of an SVG.'
+        ),
+        searchBarOverlayTransition: new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay'),
+        alwaysShowKanjiGrid: new UserSetting('alwaysShowKanjiGrid', false, 'Always show kanji grid'),
+        translationLanguage: new UserSetting('translation', 'None', 'Enable partial translation', null, Object.keys(TRANSLATIONS)),
     };
 
     const STYLES = {
