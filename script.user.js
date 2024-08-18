@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.67
+// @version 0.1.68
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1550,7 +1550,7 @@
                 const buildKanjiCache = `
                     <div style="padding-bottom: 1rem;"></div>
                     <div>
-                        <div style="display: flex; flex-direction: row; gap: 1rem; align-items: center;">
+                        <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 1rem;">
                             <div id="build-kanji-cache">
                                 <input type="submit" class="outline" value="Build Kanji Cache">
                             </div>
@@ -1563,7 +1563,7 @@
                 const resetSettings = `
                     <div style="padding-bottom: 1rem;"></div>
                     <div>
-                        <div style="display: flex; flex-direction: row; gap: 1rem;">
+                        <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 1rem;">
                             <div id="reset-settings"><input type="submit" class="outline v1" value="Reset Userscript Settings"></div>
                             <div id="reset-kanji-cache"><input type="submit" class="outline v1" value="Reset Kanji Cache"></div>
                         </div>
