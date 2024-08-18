@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.69
+// @version 0.1.70
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -180,6 +180,7 @@
             '✔ Hard': '難しい',
             '✔ Okay': '大丈夫',
             '✔ Easy': '簡単',
+            'config.reviewButtonFontWeight': '500',
         },
     };
 
@@ -852,12 +853,26 @@
     }
 
     async function injectFont() {
+        // Inject Manrope main font
         const fontUrl = 'https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap';
-
         const fontStyles = await httpRequest(fontUrl, 24 * 60 * 60);
-
         if (fontStyles) {
             GM_addStyle(fontStyles.responseText);
+        }
+
+        // Inject Noto Sans JP for review buttons
+        if (USER_SETTINGS.enableButtonStyling() && TRANSLATIONS[USER_SETTINGS.translationLanguage()]['config.reviewButtonFontWeight']) {
+            const fontUrl = 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap';
+            const fontStyles = await httpRequest(fontUrl, 24 * 60 * 60);
+            if (fontStyles) {
+                GM_addStyle(fontStyles.responseText);
+                GM_addStyle(`
+                    .review-button-group input[type="submit"] {
+                        font-family: 'Noto Sans JP', sans-serif;
+                        font-weight: ${TRANSLATIONS[USER_SETTINGS.translationLanguage()]['config.reviewButtonFontWeight']} !important;
+                    }
+                `);
+            }
         }
     }
 
