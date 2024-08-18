@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.66
+// @version 0.1.67
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -109,6 +109,7 @@
         ),
         searchBarOverlayTransition: new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay'),
         alwaysShowKanjiGrid: new UserSetting('alwaysShowKanjiGrid', false, 'Always show kanji grid'),
+        enableTranslation: new UserSetting('enableTranslation', false, 'Enable partial translation to Japanese'),
     };
 
     let STATE = {
@@ -142,6 +143,21 @@
 
     const DEBUG = {
         enableCacheLogs: false,
+    };
+
+    const TRANSLATION_JA = {
+        'Kanji': '漢字',
+        'Type a word, a kanji, or a sentence': '単語、漢字、または文章を入力してください',
+        'Settings': '設定',
+        'Logout': 'ログアウト',
+        'Stats': '統計',
+        'Vocabulary': '単語',
+        'Component': '部品',
+        '✘ Nothing': '全然',
+        '✘ Something': '何か',
+        '✔ Hard': '難しい',
+        '✔ Okay': '大丈夫',
+        '✔ Easy': '簡単',
     };
 
     const STYLES = {
@@ -1101,7 +1117,11 @@
 
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
-                if (mutation.type === 'childList' && mutation.target.classList.contains(CONFIG.deckListClass) && !mutation.target.classList.contains(CONFIG.newDeckListClass)) {
+                if (
+                    mutation.type === 'childList' &&
+                    mutation.target.classList.contains(CONFIG.deckListClass) &&
+                    !mutation.target.classList.contains(CONFIG.newDeckListClass)
+                ) {
                     console.log('Mutation:', mutation);
                     // Check if this mutation is different from the last processed one
                     if (mutation !== lastProcessedMutation) {
@@ -1624,6 +1644,113 @@
         });
     }
 
+    function initTranslation() {
+        // Flag to prevent observer from triggering itself
+        let isTranslating = false;
+
+        // Function to translate text
+        function translate(text) {
+            return TRANSLATION_JA[text.trim()] || text;
+        }
+
+        // Function to translate an element and its attributes
+        function translateElement(element) {
+            if (element.nodeType !== Node.ELEMENT_NODE) return;
+
+            let wasTranslated = false;
+
+            // Translate text content if the element only contains text
+            if (element.childNodes.length === 1 && element.childNodes[0].nodeType === Node.TEXT_NODE) {
+                const originalText = element.textContent.trim();
+                const translatedText = translate(originalText);
+                if (originalText !== translatedText) {
+                    element.textContent = translatedText;
+                    wasTranslated = true;
+                }
+            }
+
+            // Translate attributes
+            const translatableAttributes = ['placeholder', 'value', 'title', 'alt', 'aria-label'];
+            translatableAttributes.forEach((attr) => {
+                if (element.hasAttribute(attr)) {
+                    const originalText = element.getAttribute(attr);
+                    const translatedText = translate(originalText);
+                    if (originalText !== translatedText) {
+                        element.setAttribute(attr, translatedText);
+                        wasTranslated = true;
+                    }
+                }
+            });
+
+            // Handle special cases for specific elements
+            if (element.tagName === 'INPUT' && element.type === 'submit') {
+                const originalValue = element.value;
+                const translatedValue = translate(originalValue);
+                if (originalValue !== translatedValue) {
+                    element.value = translatedValue;
+                    wasTranslated = true;
+                }
+            }
+            if (element.tagName === 'META' && element.name === 'description') {
+                const originalContent = element.content;
+                const translatedContent = translate(originalContent);
+                if (originalContent !== translatedContent) {
+                    element.content = translatedContent;
+                    wasTranslated = true;
+                }
+            }
+
+            // Add lang="ja" attribute if translation occurred
+            if (wasTranslated && !element.hasAttribute('lang')) {
+                element.setAttribute('lang', 'ja');
+            }
+        }
+
+        // Function to translate all elements in the document
+        function translateAllElements() {
+            isTranslating = true;
+            const allElements = document.getElementsByTagName('*');
+            for (let element of allElements) {
+                translateElement(element);
+            }
+            isTranslating = false;
+        }
+
+        // Set up MutationObserver to handle dynamically added elements
+        const observer = new MutationObserver((mutations) => {
+            if (isTranslating) return;
+
+            isTranslating = true;
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            translateElement(node);
+                            const childElements = node.getElementsByTagName('*');
+                            for (let child of childElements) {
+                                translateElement(child);
+                            }
+                        }
+                    });
+                } else if (mutation.type === 'attributes') {
+                    translateElement(mutation.target);
+                }
+            });
+            isTranslating = false;
+        });
+
+        // Start observing the document
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['placeholder', 'value', 'title', 'alt', 'aria-label'],
+        });
+
+        // Run initial translation
+        translateAllElements();
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -1643,6 +1770,10 @@
 
         if (USER_SETTINGS.enableReplaceKanjiStrokeOrder()) {
             initKanjiStrokeOrder();
+        }
+
+        if (USER_SETTINGS.enableTranslation()) {
+            initTranslation();
         }
 
         initKanjiCopyButton();
