@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.72
+// @version 0.1.73
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -157,6 +157,8 @@
             '✔ Hard': '難しい',
             '✔ Okay': '大丈夫',
             '✔ Easy': '簡単',
+            [String.raw`/^Words \((.*?)\)$/`]: '単語（{1}）', // works as well with normal strings, but then the backslashes need to be escaped as well (e.g. `/^Words \\((.*?)\\)$/`)
+            [String.raw`/^Kanji \((.*?)\)$/`]: '漢字（{1}）',
             'config.reviewButtonFontWeight': '500',
         },
     };
@@ -1707,7 +1709,45 @@
 
         // Function to translate text
         function translate(text) {
-            return TRANSLATIONS[USER_SETTINGS.translationLanguage()][text.trim()] || text;
+            const language = USER_SETTINGS.translationLanguage();
+            if (language === 'None' || !TRANSLATIONS[language]) return text;
+
+            // Function to decode HTML entities
+            function decodeHTMLEntities(text) {
+                if (text && typeof text === 'string') {
+                    text = text.replace(/<script[^>]*>([\S\s]*?)<\/script>/gim, '');
+                    text = text.replace(/<\/?\w(?:[^"'>]|"[^"]*"|'[^']*')*>/gim, '');
+                }
+                return text.normalize('NFKC');
+            }
+
+            // Decode HTML entities in the input text
+            const decodedText = decodeHTMLEntities(text);
+
+            // Check for exact match first
+            if (TRANSLATIONS[language][decodedText.trim()]) {
+                return TRANSLATIONS[language][decodedText.trim()];
+            }
+
+            // Check for regex pattern matches
+            for (const [pattern, translation] of Object.entries(TRANSLATIONS[language])) {
+                if (pattern.startsWith('/') && pattern.endsWith('/')) {
+                    // It's a regex pattern
+                    const regexPattern = new RegExp(pattern.slice(1, -1));
+                    const match = decodedText.trim().match(regexPattern);
+                    if (match) {
+                        let result = translation;
+                        for (let i = 0; i < match.length; i++) {
+                            // Use a non-greedy replace to avoid nested replacements
+                            result = result.replace(new RegExp(`\\{${i}\\}`, 'g'), () => match[i] || '');
+                        }
+                        return result;
+                    }
+                }
+            }
+
+            // If no match found, return original text
+            return text;
         }
 
         // Function to translate an element and its attributes
