@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.73
+// @version 0.1.74
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -157,6 +157,11 @@
             '✔ Hard': '難しい',
             '✔ Okay': '大丈夫',
             '✔ Easy': '簡単',
+            'Blacklist': 'ブラックリスト',
+            "I'll never forget": '絶対に忘れない',
+            'I know this, will never forget': '完全に覚えている、絶対に忘れない',
+            'I know this, but may forget': '知っているが、忘れる可能性がある',
+            'I don\'t know this': 'これは知らない',
             [String.raw`/^Words \((.*?)\)$/`]: '単語（{1}）', // works as well with normal strings, but then the backslashes need to be escaped as well (e.g. `/^Words \\((.*?)\\)$/`)
             [String.raw`/^Kanji \((.*?)\)$/`]: '漢字（{1}）',
             'config.reviewButtonFontWeight': '500',
