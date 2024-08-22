@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.76
+// @version 0.1.77
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1168,7 +1168,6 @@
                     mutation.target.classList.contains(CONFIG.deckListClass) &&
                     !mutation.target.classList.contains(CONFIG.newDeckListClass)
                 ) {
-                    console.log('Mutation:', mutation);
                     // Check if this mutation is different from the last processed one
                     if (mutation !== lastProcessedMutation) {
                         replaceDeckList();
