@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.74
+// @version 0.1.75
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -152,11 +152,11 @@
             'Vocabulary': '単語',
             'Component': '部品',
             'Show answer': '答えを表示',
-            '✘ Nothing': '全然',
-            '✘ Something': '何か',
-            '✔ Hard': '難しい',
-            '✔ Okay': '大丈夫',
-            '✔ Easy': '簡単',
+            '✘ Nothing': '✘ 全然',
+            '✘ Something': '✘ 何か',
+            '✔ Hard': '✔ 難しい',
+            '✔ Okay': '✔ 大丈夫',
+            '✔ Easy': '✔ 簡単',
             'Blacklist': 'ブラックリスト',
             "I'll never forget": '絶対に忘れない',
             'I know this, will never forget': '完全に覚えている、絶対に忘れない',
