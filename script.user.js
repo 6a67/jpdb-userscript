@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.75
+// @version 0.1.76
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1827,15 +1827,11 @@
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach((node) => {
                         if (node.nodeType === Node.ELEMENT_NODE) {
-                            translateElement(node);
-                            const childElements = node.getElementsByTagName('*');
-                            for (let child of childElements) {
-                                translateElement(child);
-                            }
+                            translateAllElements();
                         }
                     });
                 } else if (mutation.type === 'attributes') {
-                    translateElement(mutation.target);
+                    translateAllElements();
                 }
             });
             isTranslating = false;
