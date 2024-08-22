@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.77
+// @version 0.1.78
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -161,7 +161,7 @@
             "I'll never forget": '絶対に忘れない',
             'I know this, will never forget': '完全に覚えている、絶対に忘れない',
             'I know this, but may forget': '知っているが、忘れる可能性がある',
-            'I don\'t know this': 'これは知らない',
+            "I don't know this": 'これは知らない',
             [String.raw`/^Words \((.*?)\)$/`]: '単語（{1}）', // works as well with normal strings, but then the backslashes need to be escaped as well (e.g. `/^Words \\((.*?)\\)$/`)
             [String.raw`/^Kanji \((.*?)\)$/`]: '漢字（{1}）',
             'config.reviewButtonFontWeight': '500',
@@ -189,6 +189,12 @@
         ),
         searchBarOverlayTransition: new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay'),
         alwaysShowKanjiGrid: new UserSetting('alwaysShowKanjiGrid', false, 'Always show kanji grid'),
+        enableMonolingualMachineTranslation: new UserSetting(
+            'enableMonolingualMachineTranslation',
+            false,
+            'Enable machine translation for monolingual sentences',
+            'Shows a placeholder sentence that can be clicked to translate the sentence using JPDBs machine translation.'
+        ),
         translationLanguage: new UserSetting('translation', 'None', 'Enable partial translation', null, Object.keys(TRANSLATIONS)),
     };
 
@@ -470,6 +476,10 @@
             .review-button-group {
                 box-shadow: none !important;
             }
+
+            .pending-translation {
+                cursor: pointer;
+            }
         `,
 
         button: `
@@ -650,7 +660,14 @@
         }
     }
 
-    async function httpRequest(url, cacheTimeSeconds = -1, allowStaleCache = false, allowAnyResponseCode = false, useIndexedDB = false) {
+    async function httpRequest(
+        url,
+        cacheTimeSeconds = -1,
+        allowStaleCache = false,
+        allowAnyResponseCode = false,
+        useIndexedDB = false,
+        withCredentials = true
+    ) {
         if (
             typeof url !== 'string' ||
             typeof cacheTimeSeconds !== 'number' ||
@@ -766,6 +783,7 @@
                     method: 'GET',
                     url: url,
                     nocache: true,
+                    withCredentials: withCredentials,
                     onload: async function (response) {
                         if (isCachingEnabled) {
                             await cacheResponse(response);
@@ -1848,6 +1866,84 @@
         translateAllElements();
     }
 
+    function initMonolingualMachineTranslation() {
+        async function machineTranslate(text) {
+            const response = await httpRequest(`https://jpdb.io/search?q=${text}&lang=english#a`, -1, false, false, false, false);
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(response.responseText, 'text/html');
+            const translation = doc.querySelector('#machine-translation');
+            if (translation.classList.contains('translation-in-progress')) {
+                const translationId = response.responseText.match(/translation\?id=(\d+)/)[1];
+                const translationResponse = await httpRequest(
+                    `https://jpdb.io/translation?id=${translationId}`,
+                    -1,
+                    false,
+                    false,
+                    false,
+                    false
+                );
+                return translationResponse.responseText.trim();
+            } else {
+                return translation ? translation.textContent.trim() : 'Translation not found';
+            }
+        }
+
+        function getJPText(jpElement) {
+            const clonedContents = jpElement.cloneNode(true);
+            const div = document.createElement('div');
+            div.appendChild(clonedContents);
+
+            div.querySelectorAll('ruby rt').forEach((rt) => rt.remove());
+
+            return div.innerText
+                .replace(/<br>/g, '\n')
+                .replace(/\n/g, ' ')
+                .replace(/<[^>]*>/g, '')
+                .trim();
+        }
+
+        function addMachineTranslation() {
+            const usedInElements = document.querySelectorAll('.used-in');
+            usedInElements.forEach((usedInElement) => {
+                const jpElement = usedInElement.querySelector('.jp');
+                const enElement = usedInElement.querySelector('.en');
+
+                if (jpElement && !enElement) {
+                    const enElement = document.createElement('div');
+                    enElement.classList.add('en');
+                    enElement.classList.add('pending-translation');
+                    enElement.textContent = 'Click to translate';
+                    usedInElement.appendChild(enElement);
+                    async function translateText() {
+                        const jpText = getJPText(jpElement);
+                        enElement.textContent = 'Translating...';
+                        const translatedText = await machineTranslate(jpText);
+                        enElement.textContent = translatedText;
+                        enElement.classList.remove('pending-translation');
+                        enElement.removeEventListener('click', translateText);
+                    }
+                    enElement.addEventListener('click', translateText);
+                }
+            });
+        }
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            addMachineTranslation();
+                        }
+                    });
+                }
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        addMachineTranslation();
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -1878,6 +1974,10 @@
         initShowSearchBar();
 
         unblurSentenceOnClick();
+
+        if (USER_SETTINGS.enableMonolingualMachineTranslation()) {
+            initMonolingualMachineTranslation();
+        }
     }
 
     try {
