@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.79
+// @version 0.1.80
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -19,6 +19,11 @@
 
 (function () {
     'use strict';
+
+    document.documentElement.style.display = 'none';
+    document.addEventListener(`${GM_info.script.name}-initialized`, () => {
+        document.documentElement.style.display = '';
+    });
 
     class UserSetting {
         constructor(name, defaultValue, shortDescription, longDescription = '', possibleValues = null) {
@@ -1960,6 +1965,8 @@
         if (USER_SETTINGS.enableMonolingualMachineTranslation()) {
             initMonolingualMachineTranslation();
         }
+
+        document.dispatchEvent(new CustomEvent(`${GM_info.script.name}-initialized`));
     }
 
     try {
