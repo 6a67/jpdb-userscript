@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.78
+// @version 0.1.79
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -16,24 +16,6 @@
 // @require https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
 // @updateURL https://raw.githubusercontent.com/6a67/jpdb-userscript/main/script.user.js
 // ==/UserScript==
-
-// Features
-// - Design overhaul
-// - - Updated dark mode
-// - - Font change
-// - - Rounded corners
-// - - Updated accordion styling
-// - Cleaned up homepage
-// - Kanji grid on hover
-// - Updated search bar styling
-// - Updated deck list styling and shows all decks on learning page
-// - - Hides deck list link
-// - Review button styling
-// - Replace kanji stroke order with KanjiVG
-// - Kanji component copy button
-// - Shift+click to move deck to top or bottom
-// - Ctrl+Enter to search in new tab
-// - Pressing `/` focuses search bar or creates a search overlay
 
 (function () {
     'use strict';
