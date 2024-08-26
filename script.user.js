@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.80
+// @version 0.1.81
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1912,6 +1912,26 @@
                     enElement.addEventListener('click', translateText);
                 }
             });
+
+            const cardSentence = document.querySelector('.card-sentence');
+            const reviewGroup = document.querySelector('.review-button-group');
+            const sentenceTranslation = cardSentence?.parentElement?.querySelector('.sentence-translation');
+            if (cardSentence && !sentenceTranslation && reviewGroup) {
+                console.log(cardSentence.innerHTML);
+                const jpElement = cardSentence.querySelector('.sentence');
+                const enElement = `<div style="display: flex;justify-content: center;"><div class="sentence-translation" style="">Click to translate</div></div>`;
+                cardSentence.insertAdjacentHTML('afterend', enElement);
+                async function translateText() {
+                    const jpText = getJPText(jpElement);
+                    const enElement = cardSentence.nextElementSibling.querySelector('.sentence-translation');
+                    enElement.textContent = 'Translating...';
+                    const translatedText = await machineTranslate(jpText);
+                    enElement.textContent = translatedText;
+                    enElement.classList.remove('pending-translation');
+                    enElement.removeEventListener('click', translateText);
+                }
+                cardSentence.nextElementSibling.querySelector('.sentence-translation').addEventListener('click', translateText);
+            }
         }
 
         const observer = new MutationObserver((mutations) => {
