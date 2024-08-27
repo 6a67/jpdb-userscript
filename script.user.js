@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.85
+// @version 0.1.86
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -834,7 +834,7 @@
         }
 
         function handleResponse(response, source = 'Network') {
-            if (response.status !== 200 && !allowAnyResponseCode) {
+            if (response.status !== 200) {
                 throw new Error(`Request failed with status ${response.status}`);
             }
             log(`Response retrieved from: ${source}`);
