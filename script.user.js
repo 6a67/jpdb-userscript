@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.86
+// @version 0.1.87
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1027,7 +1027,7 @@
                 };
                 audio.onloadedmetadata = () => {
                     const duration = audio.duration;
-                    const timeToWait = duration * 0.35 * 1000; // 50% of the duration
+                    const timeToWait = Math.min(duration - 0.65, 500) * 1000;
                     setTimeout(() => {
                         URL.revokeObjectURL(audioUrl);
                         resolve();
