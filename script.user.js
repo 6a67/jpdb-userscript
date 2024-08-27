@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.83
+// @version 0.1.84
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -14,6 +14,7 @@
 // @connect github.com
 // @run-at document-start
 // @require https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
+// @require https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js
 // @updateURL https://raw.githubusercontent.com/6a67/jpdb-userscript/main/script.user.js
 // ==/UserScript==
 
@@ -126,7 +127,7 @@
         soundUrlHard: 'https://d35aaqx5ub95lt.cloudfront.net/sounds/a28ff0a501ef5f33ca78c0afc45ee53e.mp3',
         soundUrlOkay: 'https://d35aaqx5ub95lt.cloudfront.net/sounds/37d8f0b39dcfe63872192c89653a93f6.mp3',
         soundUrlEasy: 'https://d35aaqx5ub95lt.cloudfront.net/sounds/2aae0ea735c8e9ed884107d6f0a09e35.mp3',
-        lottieWebScript: 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js',
+        // lottieWebScript: 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js',
         lottieSparkles: [
             'https://d35aaqx5ub95lt.cloudfront.net/lottie/e13df96082d0e4dbc6d78b6f5346e2a2.json',
             'https://d35aaqx5ub95lt.cloudfront.net/lottie/b50a27f803ddd071fdbd83af2fc05c8a.json',
@@ -183,7 +184,7 @@
             'enableButtonEffects',
             true,
             'Enable button effects',
-            'If button styling is  enabled, this will add a effect to the review buttons. This loads the Lottie library.'
+            'If button styling is  enabled, this will add a effect to the review buttons.'
         ),
         enableReplaceKanjiStrokeOrder: new UserSetting(
             'enableReplaceKanjiStrokeOrder',
@@ -1385,9 +1386,9 @@
     function initReviewPage() {
         styleReviewButtons();
 
-        if (USER_SETTINGS.enableButtonEffects()) {
-            loadScript(CONFIG.lottieWebScript);
-        }
+        // if (USER_SETTINGS.enableButtonEffects()) {
+        //     loadScript(CONFIG.lottieWebScript);
+        // }
 
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
