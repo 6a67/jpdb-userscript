@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.82
+// @version 0.1.83
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -20,10 +20,10 @@
 (function () {
     'use strict';
 
-    document.documentElement.style.display = 'none';
-    document.addEventListener(`${GM_info.script.name}-initialized`, () => {
-        document.documentElement.style.display = '';
-    });
+    // document.documentElement.style.display = 'none';
+    // document.addEventListener(`${GM_info.script.name}-initialized`, () => {
+    //     document.documentElement.style.display = '';
+    // });
 
     class UserSetting {
         constructor(name, defaultValue, shortDescription, longDescription = '', possibleValues = null) {
@@ -122,6 +122,17 @@
         cachePrefix: 'cache_',
         indexedDBName: 'HttpRequestCache',
         indexedDBStoreName: 'responses',
+        soundUrlFail: 'https://d35aaqx5ub95lt.cloudfront.net/sounds/f0b6ab4396d5891241ef4ca73b4de13a.mp3',
+        soundUrlHard: 'https://d35aaqx5ub95lt.cloudfront.net/sounds/a28ff0a501ef5f33ca78c0afc45ee53e.mp3',
+        soundUrlOkay: 'https://d35aaqx5ub95lt.cloudfront.net/sounds/37d8f0b39dcfe63872192c89653a93f6.mp3',
+        soundUrlEasy: 'https://d35aaqx5ub95lt.cloudfront.net/sounds/2aae0ea735c8e9ed884107d6f0a09e35.mp3',
+        lottieWebScript: 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js',
+        lottieSparkles: [
+            'https://d35aaqx5ub95lt.cloudfront.net/lottie/e13df96082d0e4dbc6d78b6f5346e2a2.json',
+            'https://d35aaqx5ub95lt.cloudfront.net/lottie/b50a27f803ddd071fdbd83af2fc05c8a.json',
+            'https://d35aaqx5ub95lt.cloudfront.net/lottie/e13df96082d0e4dbc6d78b6f5346e2a2.json',
+            'https://d35aaqx5ub95lt.cloudfront.net/lottie/b50a27f803ddd071fdbd83af2fc05c8a.json',
+        ],
     };
 
     const DEBUG = {
@@ -161,6 +172,18 @@
             true,
             'Enable button styling',
             'Adds styling to the buttons on the review page.'
+        ),
+        enableButtonSound: new UserSetting(
+            'enableButtonSound',
+            true,
+            'Enable button audio',
+            'If button styling is enabled, this will play a sound when a review button is clicked.'
+        ),
+        enableButtonEffects: new UserSetting(
+            'enableButtonEffects',
+            true,
+            'Enable button effects',
+            'If button styling is  enabled, this will add a effect to the review buttons. This loads the Lottie library.'
         ),
         enableReplaceKanjiStrokeOrder: new UserSetting(
             'enableReplaceKanjiStrokeOrder',
@@ -653,7 +676,8 @@
         allowStaleCache = false,
         allowAnyResponseCode = false,
         useIndexedDB = false,
-        withCredentials = true
+        withCredentials = true,
+        responseType = ''
     ) {
         if (
             typeof url !== 'string' ||
@@ -700,6 +724,25 @@
                 .join('');
         }
 
+        async function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        function base64ToBlob(base64, type = 'application/octet-stream') {
+            const binStr = atob(base64);
+            const len = binStr.length;
+            const arr = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                arr[i] = binStr.charCodeAt(i);
+            }
+            return new Blob([arr], { type: type });
+        }
+
         async function getCachedData() {
             if (useIndexedDB) {
                 return new Promise((resolve) => {
@@ -740,9 +783,15 @@
         }
 
         async function cacheResponse(response) {
+            let responseToCache = response;
+            if (responseType === 'blob' && response.response instanceof Blob) {
+                responseToCache = { ...response };
+                responseToCache.response = await blobToBase64(response.response);
+                responseToCache.isBlob = true;
+            }
             const cacheData = {
                 timestamp: Date.now(),
-                response: response,
+                response: responseToCache,
             };
             const compressedCacheData = compressData(cacheData);
 
@@ -771,6 +820,7 @@
                     url: url,
                     nocache: true,
                     withCredentials: withCredentials,
+                    responseType: responseType,
                     onload: async function (response) {
                         if (isCachingEnabled) {
                             await cacheResponse(response);
@@ -783,10 +833,13 @@
         }
 
         function handleResponse(response, source = 'Network') {
-            if (response.status !== 200) {
+            if (response.status !== 200 && !allowAnyResponseCode) {
                 throw new Error(`Request failed with status ${response.status}`);
             }
             log(`Response retrieved from: ${source}`);
+            if (responseType === 'blob' && response.isBlob) {
+                response.response = base64ToBlob(response.response, response.responseHeaders['content-type']);
+            }
             return response;
         }
 
@@ -811,6 +864,16 @@
         log('Fetching fresh response from network');
         const response = await makeRequest();
         return handleResponse(response);
+    }
+
+    async function loadScript(url) {
+        const response = await httpRequest(url, 12 * 60 * 60, true);
+        if (response.status !== 200) {
+            throw new Error(`Failed to load script: ${response.status}`);
+        }
+        const script = document.createElement('script');
+        script.textContent = response.responseText;
+        document.body.appendChild(script);
     }
 
     function purgeHttpRequestCache() {
@@ -940,6 +1003,121 @@
         return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
+    async function playButtonSound(button) {
+        let soundUrl;
+        if (button.classList.contains('v1')) {
+            soundUrl = CONFIG.soundUrlFail;
+        } else if (button.classList.contains('v3')) {
+            soundUrl = CONFIG.soundUrlHard;
+        } else if (button.classList.contains('v4')) {
+            soundUrl = CONFIG.soundUrlOkay;
+        } else if (button.classList.contains('outline')) {
+            soundUrl = CONFIG.soundUrlEasy;
+        }
+
+        if (soundUrl) {
+            const audioBlob = await httpRequest(soundUrl, 30 * 24 * 60 * 60, false, true, false, true, 'blob');
+            const audioUrl = URL.createObjectURL(audioBlob.response);
+            const audio = new Audio(audioUrl);
+            await new Promise((resolve) => {
+                audio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    resolve();
+                };
+                audio.onloadedmetadata = () => {
+                    const duration = audio.duration;
+                    const timeToWait = duration * 0.5 * 1000; // 50% of the duration
+                    setTimeout(() => {
+                        URL.revokeObjectURL(audioUrl);
+                        resolve();
+                    }, timeToWait);
+                };
+                audio.play();
+            });
+        }
+    }
+
+    function playLottieAnimation(targetElement, animationData, options = {}) {
+        if (!targetElement || !animationData) {
+            console.error('Target element or animation data is null or undefined');
+            return null;
+        }
+
+        const lottieContainer = document.createElement('div');
+        lottieContainer.style.position = 'fixed';
+        lottieContainer.style.pointerEvents = 'none';
+        lottieContainer.style.zIndex = '9999';
+        lottieContainer.style.display = 'flex';
+        lottieContainer.style.justifyContent = 'center';
+        lottieContainer.style.alignItems = 'center';
+
+        document.body.appendChild(lottieContainer);
+
+        const rect = targetElement.getBoundingClientRect();
+
+        const defaultOptions = {
+            loop: false,
+            autoplay: true,
+            renderer: 'svg',
+            speed: 1,
+            size: { width: rect.width, height: rect.height },
+        };
+
+        const animOptions = { ...defaultOptions, ...options };
+
+        lottieContainer.style.width = animOptions.size.width + 'px';
+        lottieContainer.style.height = animOptions.size.height + 'px';
+
+        const updatePosition = () => {
+            const rect = targetElement.getBoundingClientRect();
+            const leftOffset = rect.left + (rect.width - animOptions.size.width) / 2;
+            const topOffset = rect.top + (rect.height - animOptions.size.height) / 2;
+
+            lottieContainer.style.left = leftOffset + 'px';
+            lottieContainer.style.top = topOffset + 'px';
+        };
+
+        updatePosition(); // Initial positioning
+
+        try {
+            const anim = lottie.loadAnimation({
+                container: lottieContainer,
+                renderer: animOptions.renderer,
+                loop: animOptions.loop,
+                autoplay: animOptions.autoplay,
+                animationData: animationData,
+            });
+
+            anim.setSpeed(animOptions.speed);
+
+            anim.resize();
+
+            anim.addEventListener('complete', () => {
+                if (!animOptions.loop) {
+                    document.body.removeChild(lottieContainer);
+                }
+            });
+
+            window.addEventListener('scroll', updatePosition);
+            window.addEventListener('resize', updatePosition);
+
+            return anim;
+        } catch (error) {
+            console.error('Error loading animation:', error);
+            return null;
+        }
+    }
+
+    async function playEffect(button) {
+        if (button.classList.contains('v1')) {
+            return;
+        }
+
+        const randomSparkle = CONFIG.lottieSparkles[Math.floor(Math.random() * CONFIG.lottieSparkles.length)];
+        const jsonResp = await JSON.parse((await httpRequest(randomSparkle, 30 * 24 * 60 * 60, true)).responseText);
+        playLottieAnimation(button, jsonResp, { loop: false, autoplay: true, renderer: 'svg', speed: 1.5 });
+    }
+
     function styleButton(button) {
         const computedStyle = window.getComputedStyle(button);
         const colorVar = button.classList.contains('v1')
@@ -972,6 +1150,23 @@
                 button.style.transform = '';
                 button.style.boxShadow = `0 5px 0 ${darkerColor}, 0 5px 10px rgba(0,0,0,0.2)`;
                 button.style.backgroundColor = buttonColor;
+            },
+            click: async (event) => {
+                if (!document.querySelector('.review-reveal')) {
+                    return;
+                }
+                event.preventDefault();
+                if (USER_SETTINGS.enableButtonEffects()) {
+                    playEffect(button);
+                }
+
+                if (USER_SETTINGS.enableButtonSound()) {
+                    await playButtonSound(button);
+                }
+                const form = button.closest('form');
+                if (form) {
+                    form.submit();
+                }
             },
         };
 
@@ -1189,6 +1384,10 @@
 
     function initReviewPage() {
         styleReviewButtons();
+
+        if (USER_SETTINGS.enableButtonEffects()) {
+            loadScript(CONFIG.lottieWebScript);
+        }
 
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
@@ -1855,7 +2054,14 @@
 
     function initMonolingualMachineTranslation() {
         async function machineTranslate(text) {
-            const response = await httpRequest(`https://jpdb.io/search?q=${text}&lang=english#a`, -1, false, false, false, false);
+            const response = await httpRequest(
+                `https://jpdb.io/search?q=${text}&lang=english#a`,
+                7 * 24 * 60 * 60,
+                false,
+                false,
+                false,
+                false
+            );
             const parser = new DOMParser();
             const doc = parser.parseFromString(response.responseText, 'text/html');
             const translation = doc.querySelector('#machine-translation');
@@ -1863,7 +2069,7 @@
                 const translationId = response.responseText.match(/translation\?id=(\d+)/)[1];
                 const translationResponse = await httpRequest(
                     `https://jpdb.io/translation?id=${translationId}`,
-                    -1,
+                    7 * 24 * 60 * 60,
                     false,
                     false,
                     false,
