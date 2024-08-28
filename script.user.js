@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.94
+// @version 0.1.95
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -100,6 +100,8 @@
         currentlyBuildingKanjiCache: false,
         cachedEffects: GM_getValue('cachedEffects', false),
     };
+
+    let WARM = {};
 
     const CONFIG = {
         learnPageUrl: 'https://jpdb.io/learn',
@@ -1005,6 +1007,29 @@
         return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
+    async function preheat(
+        url,
+        cacheTimeSeconds = -1,
+        allowStaleCache = false,
+        allowAnyResponseCode = false,
+        useIndexedDB = false,
+        withCredentials = true,
+        responseType = ''
+    ) {
+        if (!WARM[url]) {
+            WARM[url] = await httpRequest(
+                url,
+                cacheTimeSeconds,
+                allowStaleCache,
+                allowAnyResponseCode,
+                useIndexedDB,
+                withCredentials,
+                responseType
+            );
+        }
+        return WARM[url];
+    }
+
     async function playButtonSound(button) {
         let soundUrl;
         if (button.classList.contains('v1')) {
@@ -1018,7 +1043,7 @@
         }
 
         if (soundUrl) {
-            const audioBlob = await httpRequest(soundUrl, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
+            const audioBlob = await preheat(soundUrl, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
             const audioUrl = URL.createObjectURL(audioBlob.response);
             const audio = new Audio(audioUrl);
             await new Promise((resolve) => {
@@ -1156,12 +1181,12 @@
             answerBox?.querySelector('.plain') || document.querySelector('.result.kanji')?.querySelector('.plain').firstElementChild;
         const rect = target.getBoundingClientRect();
         const smallFirework = CONFIG.lottieSmallFireworks[0];
-        const smallFireworkJson = await JSON.parse((await httpRequest(smallFirework, 30 * 24 * 60 * 60, true, false, true)).responseText);
+        const smallFireworkJson = await JSON.parse((await preheat(smallFirework, 30 * 24 * 60 * 60, true, false, true)).responseText);
         const bigFirework = CONFIG.lottieBigFireworks[Math.floor(Math.random() * CONFIG.lottieBigFireworks.length)];
-        const bigFireworkJson = await JSON.parse((await httpRequest(bigFirework, 30 * 24 * 60 * 60, true, false, true)).responseText);
+        const bigFireworkJson = await JSON.parse((await preheat(bigFirework, 30 * 24 * 60 * 60, true, false, true)).responseText);
 
         const randomSparkle = CONFIG.lottieSparkles[Math.floor(Math.random() * CONFIG.lottieSparkles.length)];
-        const jsonResp = await JSON.parse((await httpRequest(randomSparkle, 30 * 24 * 60 * 60, true, false, true)).responseText);
+        const jsonResp = await JSON.parse((await preheat(randomSparkle, 30 * 24 * 60 * 60, true, false, true)).responseText);
 
         if (target) {
             playLottieAnimation(target, smallFireworkJson, {
@@ -1247,6 +1272,19 @@
         Object.entries(buttonEvents).forEach(([event, handler]) => {
             button.addEventListener(event, handler);
         });
+
+        // warm up caches for effects and audio
+        if (USER_SETTINGS.enableButtonEffects()) {
+            const effectUrls = [].concat(CONFIG.lottieSmallFireworks, CONFIG.lottieBigFireworks, CONFIG.lottieSparkles);
+            effectUrls.forEach((url) => preheat(url, 30 * 24 * 60 * 60, true, false, true));
+        }
+
+        if (USER_SETTINGS.enableButtonSound()) {
+            preheat(CONFIG.soundUrlFail, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
+            preheat(CONFIG.soundUrlHard, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
+            preheat(CONFIG.soundUrlOkay, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
+            preheat(CONFIG.soundUrlEasy, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
+        }
     }
 
     function styleReviewButtons() {
