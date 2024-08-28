@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.107
+// @version 0.1.108
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -118,6 +118,7 @@
         currentlyBuildingKanjiCache: false,
         cachedEffects: GM_getValue('cachedEffects', false),
         warmingEffectsPromise: null,
+        reviewRevealed: GM_getValue('reviewRevealed', false),
     };
 
     let WARM = {};
@@ -156,6 +157,7 @@
         ],
         lottieSmallFireworks: ['https://files.catbox.moe/1ggh8q.json', 'https://files.catbox.moe/5t0xm4.json'],
         lottieBigFireworks: ['https://files.catbox.moe/cb35i9.json'],
+        lottieExplosions: ['https://d35aaqx5ub95lt.cloudfront.net/lottie/2a62162ea93d55dee67189cc47bd98ab.json'],
     };
 
     const DEBUG = {
@@ -1060,6 +1062,7 @@
             const audioBlob = await httpRequest(soundUrl, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
             const audioUrl = URL.createObjectURL(audioBlob.response);
             const audio = new Audio(audioUrl);
+            audio.volume = USER_SETTINGS.buttonSoundVolume();
             await new Promise((resolve) => {
                 audio.onended = () => {
                     URL.revokeObjectURL(audioUrl);
@@ -1224,6 +1227,7 @@
                 autoplay: true,
                 renderer: 'svg',
                 size: { width: rect.height * 3, height: rect.height },
+                opacity: 0.5,
             });
             playLottieAnimation(target, WARM['bigFireworkAnimation'], {
                 loop: false,
@@ -1231,7 +1235,6 @@
                 renderer: 'svg',
                 size: { width: rect.height * 3, height: rect.height },
                 opacity: 0.5,
-                playBehind: true,
             });
 
             // const html = document.querySelector('html');
@@ -1343,6 +1346,16 @@
                             );
                             WARM['sparkleAnimation'] = loadLottieAnimation(sparkleJson);
                         }
+
+                        if (!WARM['explosionAnimation']) {
+                            const explosion = CONFIG.lottieExplosions[0];
+                            const explosionJson = await JSON.parse(
+                                (
+                                    await httpRequest(explosion, 30 * 24 * 60 * 60, true, false, true)
+                                ).responseText
+                            );
+                            WARM['explosionAnimation'] = loadLottieAnimation(explosionJson);
+                        }
                     } finally {
                         // Reset the promise when done, allowing future calls to run
                         STATE.warmingEffectsPromise = null;
@@ -1352,7 +1365,36 @@
                 return STATE.warmingEffectsPromise;
             }
 
-            warmUpEffects();
+            warmUpEffects().then(() => {
+                // check if url has "review?c=" in it
+                if (window.location.href.includes('review?c=')) {
+                    let target =
+                        document.querySelector('.answer-box') ||
+                        document.querySelector('.result.kanji')?.querySelector('.plain').firstElementChild;
+                    if (target) {
+                        target =
+                            document.querySelector('.answer-box') ||
+                            document.querySelector('.result.kanji')?.querySelector('.plain').firstElementChild;
+                        const rect = target.getBoundingClientRect();
+                        playLottieAnimation(target, WARM['explosionAnimation'], {
+                            loop: false,
+                            autoplay: true,
+                            renderer: 'svg',
+                            speed: 1.5,
+                            size: { width: rect.width, height: rect.height },
+                            opacity: 0.5,
+                        });
+                        playLottieAnimation(target, WARM['bigFireworkAnimation'], {
+                            loop: false,
+                            autoplay: true,
+                            renderer: 'svg',
+                            speed: 1.5,
+                            size: { width: rect.width, height: rect.height },
+                            opacity: 0.5,
+                        });
+                    }
+                }
+            });
         }
     }
 
