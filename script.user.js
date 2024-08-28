@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.93
+// @version 0.1.94
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1018,7 +1018,7 @@
         }
 
         if (soundUrl) {
-            const audioBlob = await httpRequest(soundUrl, 30 * 24 * 60 * 60, false, true, false, true, 'blob');
+            const audioBlob = await httpRequest(soundUrl, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
             const audioUrl = URL.createObjectURL(audioBlob.response);
             const audio = new Audio(audioUrl);
             await new Promise((resolve) => {
@@ -1465,6 +1465,7 @@
 
         if (USER_SETTINGS.enableButtonEffects() && !STATE.cachedEffects) {
             const effectUrls = [].concat(CONFIG.lottieSparkles, CONFIG.lottieSmallFireworks, CONFIG.lottieBigFireworks);
+            console.log('Caching review button effects:', effectUrls);
             for (const effectUrl of effectUrls) {
                 await httpRequest(effectUrl, 30 * 24 * 60 * 60, true, false, true);
             }
