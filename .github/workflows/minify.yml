@@ -1,0 +1,42 @@
+name: Minify JavaScript
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'script.user.js'
+
+jobs:
+  minify:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout main branch
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+
+    - name: Install UglifyJS
+      run: npm install uglify-js -g
+
+    - name: Minify JavaScript
+      run: |
+        uglifyjs script.user.js -o script.min.js -c -m
+
+    - name: Create/Update minified branch
+      run: |
+        git config --global user.name 'GitHub Action'
+        git config --global user.email 'action@github.com'
+        git checkout --orphan minified
+        git rm -rf .
+        mv script.min.js script.user.js
+        git add script.user.js
+        git commit -m "Update minified script"
+        git push origin minified --force
+
