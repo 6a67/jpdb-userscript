@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.106
+// @version 0.1.107
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -117,6 +117,7 @@
     let STATE = {
         currentlyBuildingKanjiCache: false,
         cachedEffects: GM_getValue('cachedEffects', false),
+        warmingEffectsPromise: null,
     };
 
     let WARM = {};
@@ -1044,37 +1045,31 @@
     }
 
     async function playButtonSound(button) {
-        let audioUrlKey;
+        let soundUrl;
         if (button.classList.contains('v1')) {
-            audioUrlKey = 'soundUrlFail';
+            soundUrl = CONFIG.soundUrlFail;
         } else if (button.classList.contains('v3')) {
-            audioUrlKey = 'soundUrlHard';
+            soundUrl = CONFIG.soundUrlHard;
         } else if (button.classList.contains('v4')) {
-            audioUrlKey = 'soundUrlOkay';
+            soundUrl = CONFIG.soundUrlOkay;
         } else if (button.classList.contains('outline')) {
-            audioUrlKey = 'soundUrlEasy';
+            soundUrl = CONFIG.soundUrlEasy;
         }
 
-        if (WARM[audioUrlKey]) {
-            const audio = new Audio(WARM[audioUrlKey]);
-            audio.volume = USER_SETTINGS.buttonSoundVolume();
+        if (soundUrl) {
+            const audioBlob = await httpRequest(soundUrl, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
+            const audioUrl = URL.createObjectURL(audioBlob.response);
+            const audio = new Audio(audioUrl);
             await new Promise((resolve) => {
                 audio.onended = () => {
-                    // URL.revokeObjectURL(WARM[audioUrlKey]);
+                    URL.revokeObjectURL(audioUrl);
                     resolve();
                 };
                 audio.onloadedmetadata = () => {
                     const duration = audio.duration;
-
-                    let ttw = USER_SETTINGS.buttonSoundDelay();
-                    if (USER_SETTINGS.buttonSoundDelay() === -1) {
-                        ttw = GM_getValue('reviewPageLoadTime', ttw / 2) * 2;
-                    }
-
-                    const timeToWait = Math.max(duration * 1000 - ttw, 0);
+                    const timeToWait = Math.max(duration - 0.5, 0) * 1000;
                     setTimeout(() => {
-                        // URL.revokeObjectURL(WARM[audioUrlKey]);
-                        // delete WARM[audioUrlKey];
+                        URL.revokeObjectURL(audioUrl);
                         resolve();
                     }, timeToWait);
                 };
@@ -1083,11 +1078,46 @@
         }
     }
 
-    function playLottieAnimation(targetElement, animationData, options = {}) {
-        if (!targetElement || !animationData) {
-            console.error('Target element or animation data is null or undefined');
+    // Function to load the animation
+    function loadLottieAnimation(animationData) {
+        if (!animationData) {
+            console.error('Animation data is null or undefined');
             return null;
         }
+
+        try {
+            const animationConfig = {
+                renderer: 'svg',
+                loop: false,
+                autoplay: false,
+                animationData: animationData,
+            };
+
+            return animationConfig;
+        } catch (error) {
+            console.error('Error preparing animation:', error);
+            return null;
+        }
+    }
+
+    // Function to play the animation
+    function playLottieAnimation(targetElement, loadedAnimation, options = {}) {
+        if (!targetElement || !loadedAnimation) {
+            console.error('Target element or loaded animation is null or undefined');
+            return null;
+        }
+
+        const defaultOptions = {
+            loop: false,
+            autoplay: true,
+            speed: 1,
+            size: { width: 100, height: 100 },
+            opacity: 1,
+            playBehind: false,
+            rotation: 0,
+        };
+
+        const animOptions = { ...defaultOptions, ...options };
 
         const lottieContainer = document.createElement('div');
         lottieContainer.style.position = 'absolute';
@@ -1097,23 +1127,10 @@
         lottieContainer.style.alignItems = 'center';
 
         const rect = targetElement.getBoundingClientRect();
-
-        const defaultOptions = {
-            loop: false,
-            autoplay: true,
-            renderer: 'svg',
-            speed: 1,
-            size: { width: rect.width, height: rect.height },
-            opacity: 1,
-            playBehind: false,
-            rotation: 0,
-        };
-
-        const animOptions = { ...defaultOptions, ...options };
+        animOptions.size = animOptions.size || { width: rect.width, height: rect.height };
 
         const updatePosition = () => {
             if (animOptions.playBehind) {
-                // Center the animation within the target element
                 const targetRect = targetElement.getBoundingClientRect();
                 lottieContainer.style.width = targetRect.width + 'px';
                 lottieContainer.style.height = targetRect.height + 'px';
@@ -1139,7 +1156,6 @@
         lottieContainer.style.opacity = animOptions.opacity;
         lottieContainer.style.transform = `rotate(${animOptions.rotation}deg)`;
 
-        // Ensure target element has a position if it's not already set
         const targetPosition = window.getComputedStyle(targetElement).position;
         if (targetPosition === 'static') {
             targetElement.style.position = 'relative';
@@ -1157,11 +1173,10 @@
 
         try {
             const anim = lottie.loadAnimation({
+                ...loadedAnimation,
                 container: lottieContainer,
-                renderer: animOptions.renderer,
                 loop: animOptions.loop,
                 autoplay: animOptions.autoplay,
-                animationData: animationData,
             });
 
             anim.setSpeed(animOptions.speed);
@@ -1184,6 +1199,10 @@
                 window.addEventListener('resize', updatePosition);
             }
 
+            if (animOptions.autoplay) {
+                anim.play();
+            }
+
             return anim;
         } catch (error) {
             console.error('Error loading animation:', error);
@@ -1196,18 +1215,17 @@
             return;
         }
         const answerBox = document.querySelector('.answer-box');
-        const target =
-            answerBox || document.querySelector('.result.kanji')?.querySelector('.plain').firstElementChild;
+        const target = answerBox || document.querySelector('.result.kanji')?.querySelector('.plain').firstElementChild;
         const rect = target.getBoundingClientRect();
 
         if (target) {
-            // playLottieAnimation(target, WARM['smallFireworkJson'], {
-            //     loop: false,
-            //     autoplay: true,
-            //     renderer: 'svg',
-            //     size: { width: rect.height * 3, height: rect.height },
-            // });
-            playLottieAnimation(target, WARM['bigFireworkJson'], {
+            playLottieAnimation(target, WARM['smallFireworkAnimation'], {
+                loop: false,
+                autoplay: true,
+                renderer: 'svg',
+                size: { width: rect.height * 3, height: rect.height },
+            });
+            playLottieAnimation(target, WARM['bigFireworkAnimation'], {
                 loop: false,
                 autoplay: true,
                 renderer: 'svg',
@@ -1226,7 +1244,7 @@
             //     playLottieAnimation(html, smallFireworkJson, { loop: false, autoplay: true, renderer: 'svg', rotation: Math.random() * 360, opacity: 0.025});
             // }
         }
-        playLottieAnimation(button, WARM['sparkleJson'], { loop: false, autoplay: true, renderer: 'svg', speed: 1.5 });
+        playLottieAnimation(button, WARM['sparkleAnimation'], { loop: false, autoplay: true, renderer: 'svg', speed: 1.5 });
     }
 
     function styleButton(button) {
@@ -1288,66 +1306,53 @@
         // warm up caches for effects and audio
         if (USER_SETTINGS.enableButtonEffects()) {
             async function warmUpEffects() {
-                // if (!WARM['smallFireworkJson']) {
-                //     const smallFirework = CONFIG.lottieSmallFireworks[0];
-                //     const smallFireworkJson = await JSON.parse(
-                //         (
-                //             await httpRequest(smallFirework, 30 * 24 * 60 * 60, true, false, true)
-                //         ).responseText
-                //     );
-                //     WARM['smallFireworkJson'] = smallFireworkJson;
-                // }
-
-                if (!WARM['bigFireworkJson']) {
-                    const bigFirework = CONFIG.lottieBigFireworks[0];
-                    const bigFireworkJson = await JSON.parse(
-                        (
-                            await httpRequest(bigFirework, 30 * 24 * 60 * 60, true, false, true)
-                        ).responseText
-                    );
-                    WARM['bigFireworkJson'] = bigFireworkJson;
+                // If the function is already running, return the existing promise
+                if (STATE.warmingEffectsPromise) {
+                    return STATE.warmingEffectsPromise;
                 }
 
-                if (!WARM['sparkleJson']) {
-                    const randomSparkle = CONFIG.lottieSparkles[0];
-                    const sparkleJson = await JSON.parse(
-                        (
-                            await httpRequest(randomSparkle, 30 * 24 * 60 * 60, true, false, true)
-                        ).responseText
-                    );
-                    WARM['sparkleJson'] = sparkleJson;
-                }
+                // Create a new promise for this execution
+                STATE.warmingEffectsPromise = (async () => {
+                    try {
+                        if (!WARM['smallFireworkAnimation']) {
+                            const smallFirework = CONFIG.lottieSmallFireworks[0];
+                            const smallFireworkJson = await JSON.parse(
+                                (
+                                    await httpRequest(smallFirework, 30 * 24 * 60 * 60, true, false, true)
+                                ).responseText
+                            );
+                            WARM['smallFireworkAnimation'] = loadLottieAnimation(smallFireworkJson);
+                        }
+
+                        if (!WARM['bigFireworkAnimation']) {
+                            const bigFirework = CONFIG.lottieBigFireworks[0];
+                            const bigFireworkJson = await JSON.parse(
+                                (
+                                    await httpRequest(bigFirework, 30 * 24 * 60 * 60, true, false, true)
+                                ).responseText
+                            );
+                            WARM['bigFireworkAnimation'] = loadLottieAnimation(bigFireworkJson);
+                        }
+
+                        if (!WARM['sparkleAnimation']) {
+                            const randomSparkle = CONFIG.lottieSparkles[0];
+                            const sparkleJson = await JSON.parse(
+                                (
+                                    await httpRequest(randomSparkle, 30 * 24 * 60 * 60, true, false, true)
+                                ).responseText
+                            );
+                            WARM['sparkleAnimation'] = loadLottieAnimation(sparkleJson);
+                        }
+                    } finally {
+                        // Reset the promise when done, allowing future calls to run
+                        STATE.warmingEffectsPromise = null;
+                    }
+                })();
+
+                return STATE.warmingEffectsPromise;
             }
+
             warmUpEffects();
-        }
-
-        if (USER_SETTINGS.enableButtonSound()) {
-            async function warmUpAudio() {
-                if (!WARM['soundUrlFail']) {
-                    const audioBlob = await httpRequest(CONFIG.soundUrlFail, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
-                    const audioUrl = URL.createObjectURL(audioBlob.response);
-                    WARM['soundUrlFail'] = audioUrl;
-                }
-
-                if (!WARM['soundUrlHard']) {
-                    const audioBlob = await httpRequest(CONFIG.soundUrlHard, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
-                    const audioUrl = URL.createObjectURL(audioBlob.response);
-                    WARM['soundUrlHard'] = audioUrl;
-                }
-
-                if (!WARM['soundUrlOkay']) {
-                    const audioBlob = await httpRequest(CONFIG.soundUrlOkay, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
-                    const audioUrl = URL.createObjectURL(audioBlob.response);
-                    WARM['soundUrlOkay'] = audioUrl;
-                }
-
-                if (!WARM['soundUrlEasy']) {
-                    const audioBlob = await httpRequest(CONFIG.soundUrlEasy, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
-                    const audioUrl = URL.createObjectURL(audioBlob.response);
-                    WARM['soundUrlEasy'] = audioUrl;
-                }
-            }
-            warmUpAudio();
         }
     }
 
