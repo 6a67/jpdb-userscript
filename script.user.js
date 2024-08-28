@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.97
+// @version 0.1.98
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -177,17 +177,23 @@
             'Enable button styling',
             'Adds styling to the buttons on the review page.'
         ),
+        enableButtonEffects: new UserSetting(
+            'enableButtonEffects',
+            true,
+            'Enable button effects',
+            'If button styling is  enabled, this will add a effect to the review buttons.'
+        ),
         enableButtonSound: new UserSetting(
             'enableButtonSound',
             true,
             'Enable button audio',
             'If button styling is enabled, this will play a sound when a review button is clicked.'
         ),
-        enableButtonEffects: new UserSetting(
-            'enableButtonEffects',
-            true,
-            'Enable button effects',
-            'If button styling is  enabled, this will add a effect to the review buttons.'
+        buttonSoundDelay: new UserSetting(
+            'buttonSoundDelay',
+            -1,
+            'Button audio delay',
+            'If button audio is enabled, the delay in milliseconds before the site redirects after a button starts playing a sound. Use -1 to automatically detect the delay. To disable the delay, enter a large negative number.'
         ),
         enableReplaceKanjiStrokeOrder: new UserSetting(
             'enableReplaceKanjiStrokeOrder',
@@ -1028,7 +1034,13 @@
                 };
                 audio.onloadedmetadata = () => {
                     const duration = audio.duration;
-                    const timeToWait = Math.max(duration - 0.5, 0) * 1000;
+
+                    let ttw = USER_SETTINGS.buttonSoundDelay();
+                    if (USER_SETTINGS.buttonSoundDelay() === -1) {
+                        ttw = GM_getValue('reviewPageLoadTime', ttw / 2) * 2;
+                    }
+
+                    const timeToWait = Math.max(duration * 1000 - ttw, 0);
                     setTimeout(() => {
                         // URL.revokeObjectURL(WARM[audioUrlKey]);
                         // delete WARM[audioUrlKey];
@@ -1518,9 +1530,28 @@
     async function initReviewPage() {
         styleReviewButtons();
 
-        // if (USER_SETTINGS.enableButtonEffects()) {
-        //     loadScript(CONFIG.lottieWebScript);
-        // }
+        if (USER_SETTINGS.buttonSoundDelay() === -1) {
+            function initPageLoadTime() {
+                // Function to measure page load time
+                function measurePageLoadTime() {
+                    if (performance && performance.timing) {
+                        const navTiming = performance.timing;
+                        const loadTime = navTiming.loadEventEnd - navTiming.navigationStart;
+        
+                        // Store the load time
+                        GM_setValue('reviewPageLoadTime', loadTime);
+                    }
+                }
+        
+                // Measure load time when the page is fully loaded
+                window.addEventListener('load', function() {
+                    // Wait a short time to ensure loadEventEnd is set
+                    setTimeout(measurePageLoadTime, 0);
+                });
+            }
+
+            initPageLoadTime();
+        }
 
         if (USER_SETTINGS.enableButtonEffects() && !STATE.cachedEffects) {
             const effectUrls = [].concat(CONFIG.lottieSparkles, CONFIG.lottieSmallFireworks, CONFIG.lottieBigFireworks);
@@ -1939,7 +1970,7 @@
                         sectionsHTML += `
                             <div>
                                 <label for="${setting.getName()}">${setting.getShortDescription()}</label>
-                                <input style="max-width: 16rem;" type="number" id="${setting.getName()}" name="${setting.getName()}" min="1" max="99999" value="${setting()}">
+                                <input style="max-width: 16rem;" type="number" id="${setting.getName()}" name="${setting.getName()}" min="-99999" max="99999" value="${setting()}">
                                 ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
                             </div>
                         `;
