@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.104
+// @version 0.1.105
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -2260,7 +2260,7 @@
     function initMonolingualMachineTranslation() {
         async function machineTranslate(text) {
             const response = await httpRequest(
-                `https://jpdb.io/search?q=${text}&lang=english#a`,
+                `https://jpdb.io/search?q=${encodeURIComponent(text)}&lang=english#a`,
                 7 * 24 * 60 * 60,
                 false,
                 false,
