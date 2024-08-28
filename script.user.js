@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.95
+// @version 0.1.96
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1007,55 +1007,31 @@
         return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
-    async function preheat(
-        url,
-        cacheTimeSeconds = -1,
-        allowStaleCache = false,
-        allowAnyResponseCode = false,
-        useIndexedDB = false,
-        withCredentials = true,
-        responseType = ''
-    ) {
-        if (!WARM[url]) {
-            WARM[url] = await httpRequest(
-                url,
-                cacheTimeSeconds,
-                allowStaleCache,
-                allowAnyResponseCode,
-                useIndexedDB,
-                withCredentials,
-                responseType
-            );
-        }
-        return WARM[url];
-    }
-
     async function playButtonSound(button) {
-        let soundUrl;
+        let audioUrlKey;
         if (button.classList.contains('v1')) {
-            soundUrl = CONFIG.soundUrlFail;
+            audioUrlKey = 'soundUrlFail';
         } else if (button.classList.contains('v3')) {
-            soundUrl = CONFIG.soundUrlHard;
+            audioUrlKey = 'soundUrlHard';
         } else if (button.classList.contains('v4')) {
-            soundUrl = CONFIG.soundUrlOkay;
+            audioUrlKey = 'soundUrlOkay';
         } else if (button.classList.contains('outline')) {
-            soundUrl = CONFIG.soundUrlEasy;
+            audioUrlKey = 'soundUrlEasy';
         }
 
-        if (soundUrl) {
-            const audioBlob = await preheat(soundUrl, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
-            const audioUrl = URL.createObjectURL(audioBlob.response);
-            const audio = new Audio(audioUrl);
+        if (WARM[audioUrlKey]) {
+            const audio = new Audio(WARM[audioUrlKey]);
             await new Promise((resolve) => {
                 audio.onended = () => {
-                    URL.revokeObjectURL(audioUrl);
+                    // URL.revokeObjectURL(WARM[audioUrlKey]);
                     resolve();
                 };
                 audio.onloadedmetadata = () => {
                     const duration = audio.duration;
                     const timeToWait = Math.max(duration - 0.5, 0) * 1000;
                     setTimeout(() => {
-                        URL.revokeObjectURL(audioUrl);
+                        // URL.revokeObjectURL(WARM[audioUrlKey]);
+                        // delete WARM[audioUrlKey];
                         resolve();
                     }, timeToWait);
                 };
@@ -1180,22 +1156,15 @@
         const target =
             answerBox?.querySelector('.plain') || document.querySelector('.result.kanji')?.querySelector('.plain').firstElementChild;
         const rect = target.getBoundingClientRect();
-        const smallFirework = CONFIG.lottieSmallFireworks[0];
-        const smallFireworkJson = await JSON.parse((await preheat(smallFirework, 30 * 24 * 60 * 60, true, false, true)).responseText);
-        const bigFirework = CONFIG.lottieBigFireworks[Math.floor(Math.random() * CONFIG.lottieBigFireworks.length)];
-        const bigFireworkJson = await JSON.parse((await preheat(bigFirework, 30 * 24 * 60 * 60, true, false, true)).responseText);
-
-        const randomSparkle = CONFIG.lottieSparkles[Math.floor(Math.random() * CONFIG.lottieSparkles.length)];
-        const jsonResp = await JSON.parse((await preheat(randomSparkle, 30 * 24 * 60 * 60, true, false, true)).responseText);
 
         if (target) {
-            playLottieAnimation(target, smallFireworkJson, {
+            playLottieAnimation(target, WARM['smallFireworkJson'], {
                 loop: false,
                 autoplay: true,
                 renderer: 'svg',
                 size: { width: rect.height * 3, height: rect.height },
             });
-            playLottieAnimation(target, bigFireworkJson, {
+            playLottieAnimation(target, WARM['bigFireworkJson'], {
                 loop: false,
                 autoplay: true,
                 renderer: 'svg',
@@ -1214,7 +1183,7 @@
             //     playLottieAnimation(html, smallFireworkJson, { loop: false, autoplay: true, renderer: 'svg', rotation: Math.random() * 360, opacity: 0.025});
             // }
         }
-        playLottieAnimation(button, jsonResp, { loop: false, autoplay: true, renderer: 'svg', speed: 1.5 });
+        playLottieAnimation(button, WARM['sparkleJson'], { loop: false, autoplay: true, renderer: 'svg', speed: 1.5 });
     }
 
     function styleButton(button) {
@@ -1262,10 +1231,10 @@
                 if (USER_SETTINGS.enableButtonSound()) {
                     await playButtonSound(button);
                 }
-                const form = button.closest('form');
-                if (form) {
-                    form.submit();
-                }
+                // const form = button.closest('form');
+                // if (form) {
+                //     form.submit();
+                // }
             },
         };
 
@@ -1275,15 +1244,67 @@
 
         // warm up caches for effects and audio
         if (USER_SETTINGS.enableButtonEffects()) {
-            const effectUrls = [].concat(CONFIG.lottieSmallFireworks, CONFIG.lottieBigFireworks, CONFIG.lottieSparkles);
-            effectUrls.forEach((url) => preheat(url, 30 * 24 * 60 * 60, true, false, true));
+            async function warmUpEffects() {
+                if (!WARM['smallFireworkJson']) {
+                    const smallFirework = CONFIG.lottieSmallFireworks[0];
+                    const smallFireworkJson = await JSON.parse(
+                        (
+                            await httpRequest(smallFirework, 30 * 24 * 60 * 60, true, false, true)
+                        ).responseText
+                    );
+                    WARM['smallFireworkJson'] = smallFireworkJson;
+                }
+
+                if (!WARM['bigFireworkJson']) {
+                    const bigFirework = CONFIG.lottieBigFireworks[0];
+                    const bigFireworkJson = await JSON.parse(
+                        (
+                            await httpRequest(bigFirework, 30 * 24 * 60 * 60, true, false, true)
+                        ).responseText
+                    );
+                    WARM['bigFireworkJson'] = bigFireworkJson;
+                }
+
+                if (!WARM['sparkleJson']) {
+                    const randomSparkle = CONFIG.lottieSparkles[0];
+                    const sparkleJson = await JSON.parse(
+                        (
+                            await httpRequest(randomSparkle, 30 * 24 * 60 * 60, true, false, true)
+                        ).responseText
+                    );
+                    WARM['sparkleJson'] = sparkleJson;
+                }
+            }
+            warmUpEffects();
         }
 
         if (USER_SETTINGS.enableButtonSound()) {
-            preheat(CONFIG.soundUrlFail, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
-            preheat(CONFIG.soundUrlHard, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
-            preheat(CONFIG.soundUrlOkay, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
-            preheat(CONFIG.soundUrlEasy, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
+            async function warmUpAudio() {
+                if (!WARM['soundUrlFail']) {
+                    const audioBlob = await httpRequest(CONFIG.soundUrlFail, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
+                    const audioUrl = URL.createObjectURL(audioBlob.response);
+                    WARM['soundUrlFail'] = audioUrl;
+                }
+
+                if (!WARM['soundUrlHard']) {
+                    const audioBlob = await httpRequest(CONFIG.soundUrlHard, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
+                    const audioUrl = URL.createObjectURL(audioBlob.response);
+                    WARM['soundUrlHard'] = audioUrl;
+                }
+
+                if (!WARM['soundUrlOkay']) {
+                    const audioBlob = await httpRequest(CONFIG.soundUrlOkay, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
+                    const audioUrl = URL.createObjectURL(audioBlob.response);
+                    WARM['soundUrlOkay'] = audioUrl;
+                }
+
+                if (!WARM['soundUrlEasy']) {
+                    const audioBlob = await httpRequest(CONFIG.soundUrlEasy, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
+                    const audioUrl = URL.createObjectURL(audioBlob.response);
+                    WARM['soundUrlEasy'] = audioUrl;
+                }
+            }
+            warmUpAudio();
         }
     }
 
