@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.91
+// @version 0.1.92
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -98,6 +98,7 @@
 
     let STATE = {
         currentlyBuildingKanjiCache: false,
+        cachedEffects: GM_getValue('cachedEffects', false),
     };
 
     const CONFIG = {
@@ -129,8 +130,6 @@
         soundUrlEasy: 'https://d35aaqx5ub95lt.cloudfront.net/sounds/2aae0ea735c8e9ed884107d6f0a09e35.mp3',
         // lottieWebScript: 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js',
         lottieSparkles: [
-            'https://d35aaqx5ub95lt.cloudfront.net/lottie/e13df96082d0e4dbc6d78b6f5346e2a2.json',
-            'https://d35aaqx5ub95lt.cloudfront.net/lottie/b50a27f803ddd071fdbd83af2fc05c8a.json',
             'https://d35aaqx5ub95lt.cloudfront.net/lottie/e13df96082d0e4dbc6d78b6f5346e2a2.json',
             'https://d35aaqx5ub95lt.cloudfront.net/lottie/b50a27f803ddd071fdbd83af2fc05c8a.json',
         ],
@@ -837,7 +836,7 @@
 
         function handleResponse(response, source = 'Network') {
             if (response.status !== 200) {
-                throw new Error(`Request failed with status ${response.status}`);
+                throw new Error(`Requesting ${url} failed with status: ${response.status}`);
             }
             log(`Response retrieved from: ${source}`);
             if (responseType === 'blob' && response.isBlob) {
@@ -1457,12 +1456,21 @@
         observer.observe(document.body, { childList: true, subtree: true });
     }
 
-    function initReviewPage() {
+    async function initReviewPage() {
         styleReviewButtons();
 
         // if (USER_SETTINGS.enableButtonEffects()) {
         //     loadScript(CONFIG.lottieWebScript);
         // }
+
+        if (USER_SETTINGS.enableButtonEffects() && !STATE.cachedEffects) {
+            const effectUrls = [].concat(CONFIG.lottieSparkles, CONFIG.lottieSmallFireworks, CONFIG.lottieBigFireworks);
+            for (const effectUrl of effectUrls) {
+                await httpRequest(effectUrl, 30 * 24 * 60 * 60, true);
+            }
+            STATE.cachedEffects = true;
+            GM_setValue('cachedEffects', true);
+        }
 
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
