@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.98
+// @version 0.1.99
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1170,12 +1170,12 @@
         const rect = target.getBoundingClientRect();
 
         if (target) {
-            playLottieAnimation(target, WARM['smallFireworkJson'], {
-                loop: false,
-                autoplay: true,
-                renderer: 'svg',
-                size: { width: rect.height * 3, height: rect.height },
-            });
+            // playLottieAnimation(target, WARM['smallFireworkJson'], {
+            //     loop: false,
+            //     autoplay: true,
+            //     renderer: 'svg',
+            //     size: { width: rect.height * 3, height: rect.height },
+            // });
             playLottieAnimation(target, WARM['bigFireworkJson'], {
                 loop: false,
                 autoplay: true,
@@ -1257,15 +1257,15 @@
         // warm up caches for effects and audio
         if (USER_SETTINGS.enableButtonEffects()) {
             async function warmUpEffects() {
-                if (!WARM['smallFireworkJson']) {
-                    const smallFirework = CONFIG.lottieSmallFireworks[0];
-                    const smallFireworkJson = await JSON.parse(
-                        (
-                            await httpRequest(smallFirework, 30 * 24 * 60 * 60, true, false, true)
-                        ).responseText
-                    );
-                    WARM['smallFireworkJson'] = smallFireworkJson;
-                }
+                // if (!WARM['smallFireworkJson']) {
+                //     const smallFirework = CONFIG.lottieSmallFireworks[0];
+                //     const smallFireworkJson = await JSON.parse(
+                //         (
+                //             await httpRequest(smallFirework, 30 * 24 * 60 * 60, true, false, true)
+                //         ).responseText
+                //     );
+                //     WARM['smallFireworkJson'] = smallFireworkJson;
+                // }
 
                 if (!WARM['bigFireworkJson']) {
                     const bigFirework = CONFIG.lottieBigFireworks[0];
