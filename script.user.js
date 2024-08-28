@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.96
+// @version 0.1.97
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1231,10 +1231,10 @@
                 if (USER_SETTINGS.enableButtonSound()) {
                     await playButtonSound(button);
                 }
-                // const form = button.closest('form');
-                // if (form) {
-                //     form.submit();
-                // }
+                const form = button.closest('form');
+                if (form) {
+                    form.submit();
+                }
             },
         };
 
