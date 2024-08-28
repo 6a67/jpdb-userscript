@@ -34,8 +34,8 @@ jobs:
         # Extract userscript header
         sed -n '/==UserScript==/,/==\/UserScript==/p' script.user.js > header.txt
         
-        # Minify JavaScript (excluding header)
-        sed '1,/==\/UserScript==/d' script.user.js | uglifyjs --compress --mangle --comments '/^!/' > script.min.js
+        # Minify JavaScript (excluding header) and output on a single line
+        sed '1,/==\/UserScript==/d' script.user.js | uglifyjs --compress --mangle --comments '/^!/' --beautify beautify=false,max_line_len=0 > script.min.js
         
         # Minify CSS within the script
         sed -i 's/`\(.*\)`/`'"$(echo '\\1' | cleancss -O2)"'`/g' script.min.js
