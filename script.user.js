@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.90
+// @version 0.1.91
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -134,6 +134,8 @@
             'https://d35aaqx5ub95lt.cloudfront.net/lottie/e13df96082d0e4dbc6d78b6f5346e2a2.json',
             'https://d35aaqx5ub95lt.cloudfront.net/lottie/b50a27f803ddd071fdbd83af2fc05c8a.json',
         ],
+        lottieSmallFireworks: ['https://files.catbox.moe/1ggh8q.json', 'https://files.catbox.moe/5t0xm4.json'],
+        lottieBigFireworks: ['https://files.catbox.moe/cb35i9.json'],
     };
 
     const DEBUG = {
@@ -1045,14 +1047,11 @@
         }
 
         const lottieContainer = document.createElement('div');
-        lottieContainer.style.position = 'fixed';
+        lottieContainer.style.position = 'absolute';
         lottieContainer.style.pointerEvents = 'none';
-        lottieContainer.style.zIndex = '9999';
         lottieContainer.style.display = 'flex';
         lottieContainer.style.justifyContent = 'center';
         lottieContainer.style.alignItems = 'center';
-
-        document.body.appendChild(lottieContainer);
 
         const rect = targetElement.getBoundingClientRect();
 
@@ -1062,23 +1061,56 @@
             renderer: 'svg',
             speed: 1,
             size: { width: rect.width, height: rect.height },
+            opacity: 1,
+            playBehind: false,
+            rotation: 0,
         };
 
         const animOptions = { ...defaultOptions, ...options };
 
-        lottieContainer.style.width = animOptions.size.width + 'px';
-        lottieContainer.style.height = animOptions.size.height + 'px';
-
         const updatePosition = () => {
-            const rect = targetElement.getBoundingClientRect();
-            const leftOffset = rect.left + (rect.width - animOptions.size.width) / 2;
-            const topOffset = rect.top + (rect.height - animOptions.size.height) / 2;
+            if (animOptions.playBehind) {
+                // Center the animation within the target element
+                const targetRect = targetElement.getBoundingClientRect();
+                lottieContainer.style.width = targetRect.width + 'px';
+                lottieContainer.style.height = targetRect.height + 'px';
+                lottieContainer.style.left = '0';
+                lottieContainer.style.top = '0';
+            } else {
+                lottieContainer.style.width = animOptions.size.width + 'px';
+                lottieContainer.style.height = animOptions.size.height + 'px';
+                const rect = targetElement.getBoundingClientRect();
+                const targetWidth = rect.width;
+                const targetHeight = rect.height;
+                const containerWidth = lottieContainer.offsetWidth;
+                const containerHeight = lottieContainer.offsetHeight;
 
-            lottieContainer.style.left = leftOffset + 'px';
-            lottieContainer.style.top = topOffset + 'px';
+                const left = rect.left + (targetWidth - containerWidth) / 2;
+                const top = rect.top + (targetHeight - containerHeight) / 2;
+
+                lottieContainer.style.left = left + 'px';
+                lottieContainer.style.top = top + 'px';
+            }
         };
 
-        updatePosition(); // Initial positioning
+        lottieContainer.style.opacity = animOptions.opacity;
+        lottieContainer.style.transform = `rotate(${animOptions.rotation}deg)`;
+
+        // Ensure target element has a position if it's not already set
+        const targetPosition = window.getComputedStyle(targetElement).position;
+        if (targetPosition === 'static') {
+            targetElement.style.position = 'relative';
+        }
+
+        if (animOptions.playBehind) {
+            targetElement.parentNode.insertBefore(lottieContainer, targetElement);
+        } else {
+            document.body.appendChild(lottieContainer);
+            lottieContainer.style.position = 'fixed';
+            lottieContainer.style.zIndex = '9999';
+        }
+
+        updatePosition();
 
         try {
             const anim = lottie.loadAnimation({
@@ -1091,16 +1123,23 @@
 
             anim.setSpeed(animOptions.speed);
 
-            anim.resize();
+            if (animOptions.playBehind) {
+                anim.resize();
+            }
 
             anim.addEventListener('complete', () => {
                 if (!animOptions.loop) {
-                    document.body.removeChild(lottieContainer);
+                    lottieContainer.remove();
+                    if (targetPosition === 'static') {
+                        targetElement.style.position = '';
+                    }
                 }
             });
 
-            window.addEventListener('scroll', updatePosition);
-            window.addEventListener('resize', updatePosition);
+            if (!animOptions.playBehind) {
+                window.addEventListener('scroll', updatePosition);
+                window.addEventListener('resize', updatePosition);
+            }
 
             return anim;
         } catch (error) {
@@ -1113,9 +1152,44 @@
         if (button.classList.contains('v1')) {
             return;
         }
+        const answerBox = document.querySelector('.answer-box');
+        const target =
+            answerBox?.querySelector('.plain') || document.querySelector('.result.kanji')?.querySelector('.plain').firstElementChild;
+        const rect = target.getBoundingClientRect();
+        const smallFirework = CONFIG.lottieSmallFireworks[0];
+        const smallFireworkJson = await JSON.parse((await httpRequest(smallFirework, 30 * 24 * 60 * 60, true)).responseText);
+        const bigFirework = CONFIG.lottieBigFireworks[Math.floor(Math.random() * CONFIG.lottieBigFireworks.length)];
+        const bigFireworkJson = await JSON.parse((await httpRequest(bigFirework, 30 * 24 * 60 * 60, true)).responseText);
 
         const randomSparkle = CONFIG.lottieSparkles[Math.floor(Math.random() * CONFIG.lottieSparkles.length)];
         const jsonResp = await JSON.parse((await httpRequest(randomSparkle, 30 * 24 * 60 * 60, true)).responseText);
+
+        if (target) {
+            playLottieAnimation(target, smallFireworkJson, {
+                loop: false,
+                autoplay: true,
+                renderer: 'svg',
+                size: { width: rect.height * 3, height: rect.height },
+            });
+            playLottieAnimation(target, bigFireworkJson, {
+                loop: false,
+                autoplay: true,
+                renderer: 'svg',
+                size: { width: rect.height * 3, height: rect.height },
+                opacity: 0.5,
+                playBehind: true,
+            });
+
+            // const html = document.querySelector('html');
+            // const backgroundFirework =  CONFIG.lottieSmallFireworks[1];
+            // const backgroundFireworkJson = await JSON.parse((await httpRequest(backgroundFirework, 30 * 24 * 60 * 60, true)).responseText);
+            // for (let i = 0; i < 2; i++) {
+            //     playLottieAnimation(html, backgroundFireworkJson, { loop: false, autoplay: true, renderer: 'svg', rotation: Math.random() * 360, opacity: 0.025});
+            // }
+            // for (let i = 0; i < 1; i++) {
+            //     playLottieAnimation(html, smallFireworkJson, { loop: false, autoplay: true, renderer: 'svg', rotation: Math.random() * 360, opacity: 0.025});
+            // }
+        }
         playLottieAnimation(button, jsonResp, { loop: false, autoplay: true, renderer: 'svg', speed: 1.5 });
     }
 
