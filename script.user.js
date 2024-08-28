@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.92
+// @version 0.1.93
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1156,12 +1156,12 @@
             answerBox?.querySelector('.plain') || document.querySelector('.result.kanji')?.querySelector('.plain').firstElementChild;
         const rect = target.getBoundingClientRect();
         const smallFirework = CONFIG.lottieSmallFireworks[0];
-        const smallFireworkJson = await JSON.parse((await httpRequest(smallFirework, 30 * 24 * 60 * 60, true)).responseText);
+        const smallFireworkJson = await JSON.parse((await httpRequest(smallFirework, 30 * 24 * 60 * 60, true, false, true)).responseText);
         const bigFirework = CONFIG.lottieBigFireworks[Math.floor(Math.random() * CONFIG.lottieBigFireworks.length)];
-        const bigFireworkJson = await JSON.parse((await httpRequest(bigFirework, 30 * 24 * 60 * 60, true)).responseText);
+        const bigFireworkJson = await JSON.parse((await httpRequest(bigFirework, 30 * 24 * 60 * 60, true, false, true)).responseText);
 
         const randomSparkle = CONFIG.lottieSparkles[Math.floor(Math.random() * CONFIG.lottieSparkles.length)];
-        const jsonResp = await JSON.parse((await httpRequest(randomSparkle, 30 * 24 * 60 * 60, true)).responseText);
+        const jsonResp = await JSON.parse((await httpRequest(randomSparkle, 30 * 24 * 60 * 60, true, false, true)).responseText);
 
         if (target) {
             playLottieAnimation(target, smallFireworkJson, {
@@ -1466,7 +1466,7 @@
         if (USER_SETTINGS.enableButtonEffects() && !STATE.cachedEffects) {
             const effectUrls = [].concat(CONFIG.lottieSparkles, CONFIG.lottieSmallFireworks, CONFIG.lottieBigFireworks);
             for (const effectUrl of effectUrls) {
-                await httpRequest(effectUrl, 30 * 24 * 60 * 60, true);
+                await httpRequest(effectUrl, 30 * 24 * 60 * 60, true, false, true);
             }
             STATE.cachedEffects = true;
             GM_setValue('cachedEffects', true);
