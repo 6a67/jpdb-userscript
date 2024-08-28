@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.99
+// @version 0.1.100
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -27,12 +27,14 @@
     // });
 
     class UserSetting {
-        constructor(name, defaultValue, shortDescription, longDescription = '', possibleValues = null) {
+        constructor(name, defaultValue, shortDescription, longDescription = '', possibleValues = null, minVal = 1, maxVal = 99999) {
             this.name = name;
             this.defaultValue = defaultValue;
             this.shortDescription = shortDescription;
             this.longDescription = longDescription;
             this.possibleValues = possibleValues;
+            this.minVal = minVal;
+            this.maxVal = maxVal;
 
             // Initialize the value, ensuring it's within possible values if specified
             this.value = this.validateValue(GM_getValue(name, defaultValue));
@@ -54,6 +56,8 @@
             settingFunction.getShortDescription = this.getShortDescription.bind(this);
             settingFunction.getLongDescription = this.getLongDescription.bind(this);
             settingFunction.getPossibleValues = this.getPossibleValues.bind(this);
+            settingFunction.getMinVal = this.getMinVal.bind(this);
+            settingFunction.getMaxVal = this.getMaxVal.bind(this);
 
             // Return the function with added methods
             return settingFunction;
@@ -63,6 +67,12 @@
             if (this.possibleValues && !this.possibleValues.includes(value)) {
                 console.warn(`Invalid value for ${this.name}. Using default value.`);
                 return this.defaultValue;
+            }
+            if (typeof value === 'number') {
+                if (value < this.minVal || value > this.maxVal) {
+                    console.warn(`Invalid value for ${this.name}. Using default value.`);
+                    return this.defaultValue;
+                }
             }
             return value;
         }
@@ -93,6 +103,14 @@
 
         getPossibleValues() {
             return this.possibleValues;
+        }
+
+        getMinVal() {
+            return this.minVal;
+        }
+
+        getMaxVal() {
+            return this.maxVal;
         }
     }
 
@@ -189,11 +207,23 @@
             'Enable button audio',
             'If button styling is enabled, this will play a sound when a review button is clicked.'
         ),
+        buttonSoundVolume: new UserSetting(
+            'buttonSoundVolume',
+            1,
+            'Button audio volume',
+            'If button audio is enabled, this will set the volume of the button sound.',
+            null,
+            0,
+            1
+        ),
         buttonSoundDelay: new UserSetting(
             'buttonSoundDelay',
             -1,
             'Button audio delay',
-            'If button audio is enabled, the delay in milliseconds before the site redirects after a button starts playing a sound. Use -1 to automatically detect the delay. To disable the delay, enter a large negative number.'
+            'If button audio is enabled, the delay in milliseconds before the site redirects after a button starts playing a sound. Use -1 to automatically detect the delay. To disable the delay, enter a large negative number.',
+            null,
+            -99999,
+            99999
         ),
         enableReplaceKanjiStrokeOrder: new UserSetting(
             'enableReplaceKanjiStrokeOrder',
@@ -1027,6 +1057,7 @@
 
         if (WARM[audioUrlKey]) {
             const audio = new Audio(WARM[audioUrlKey]);
+            audio.volume = USER_SETTINGS.buttonSoundVolume();
             await new Promise((resolve) => {
                 audio.onended = () => {
                     // URL.revokeObjectURL(WARM[audioUrlKey]);
@@ -1244,9 +1275,9 @@
                     await playButtonSound(button);
                 }
                 const form = button.closest('form');
-                if (form) {
-                    form.submit();
-                }
+                // if (form) {
+                //     form.submit();
+                // }
             },
         };
 
@@ -1537,14 +1568,14 @@
                     if (performance && performance.timing) {
                         const navTiming = performance.timing;
                         const loadTime = navTiming.loadEventEnd - navTiming.navigationStart;
-        
+
                         // Store the load time
                         GM_setValue('reviewPageLoadTime', loadTime);
                     }
                 }
-        
+
                 // Measure load time when the page is fully loaded
-                window.addEventListener('load', function() {
+                window.addEventListener('load', function () {
                     // Wait a short time to ensure loadEventEnd is set
                     setTimeout(measurePageLoadTime, 0);
                 });
@@ -1970,7 +2001,7 @@
                         sectionsHTML += `
                             <div>
                                 <label for="${setting.getName()}">${setting.getShortDescription()}</label>
-                                <input style="max-width: 16rem;" type="number" id="${setting.getName()}" name="${setting.getName()}" min="-99999" max="99999" value="${setting()}">
+                                <input style="max-width: 16rem;" type="number" id="${setting.getName()}" name="${setting.getName()}" step="any" value="${setting()}">
                                 ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
                             </div>
                         `;
