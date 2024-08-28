@@ -1,4 +1,4 @@
-name: Minify JavaScript
+name: Minify JavaScript, CSS, and HTML while Preserving Comments
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
       - 'script.user.js'
 
 jobs:
-  minify:
+  minify-and-update:
     runs-on: ubuntu-latest
     
     steps:
@@ -22,12 +22,33 @@ jobs:
       with:
         node-version: '16'
 
-    - name: Install UglifyJS
-      run: npm install uglify-js -g
-
-    - name: Minify JavaScript
+    - name: Install dependencies
       run: |
-        uglifyjs script.user.js -o script.min.js -c -m
+        npm install uglify-js -g
+        npm install clean-css-cli -g
+        npm install html-minifier -g
+        sudo apt-get install -y sed
+
+    - name: Minify JavaScript, CSS, and HTML
+      run: |
+        # Extract userscript header
+        sed -n '/==UserScript==/,/==\/UserScript==/p' script.user.js > header.txt
+        
+        # Minify JavaScript (excluding header)
+        sed '1,/==\/UserScript==/d' script.user.js | uglifyjs --compress --mangle --comments '/^!/' > script.min.js
+        
+        # Minify CSS within the script
+        sed -i 's/`\(.*\)`/`'"$(echo '\\1' | cleancss -O2)"'`/g' script.min.js
+        
+        # Minify HTML within the script
+        sed -i 's/`\(.*\)`/`'"$(echo '\\1' | html-minifier --collapse-whitespace --remove-comments --remove-optional-tags --remove-redundant-attributes --remove-script-type-attributes --remove-tag-whitespace --use-short-doctype --minify-css true --minify-js true)"'`/g' script.min.js
+        
+        # Combine header and minified script
+        cat header.txt script.min.js > script.final.js
+
+    - name: Update @updateURL
+      run: |
+        sed -i 's|@updateURL.*|@updateURL https://raw.githubusercontent.com/${{ github.repository }}/minified/script.user.js|' script.final.js
 
     - name: Create/Update minified branch
       run: |
@@ -35,8 +56,7 @@ jobs:
         git config --global user.email 'action@github.com'
         git checkout --orphan minified
         git rm -rf .
-        mv script.min.js script.user.js
+        mv script.final.js script.user.js
         git add script.user.js
-        git commit -m "Update minified script"
+        git commit -m "Update minified script with preserved header, minified CSS/HTML, and new @updateURL"
         git push origin minified --force
-
