@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.110
+// @version 0.1.111
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -150,6 +150,7 @@
         soundUrlHard: 'https://d35aaqx5ub95lt.cloudfront.net/sounds/a28ff0a501ef5f33ca78c0afc45ee53e.mp3',
         soundUrlOkay: 'https://d35aaqx5ub95lt.cloudfront.net/sounds/37d8f0b39dcfe63872192c89653a93f6.mp3',
         soundUrlEasy: 'https://d35aaqx5ub95lt.cloudfront.net/sounds/2aae0ea735c8e9ed884107d6f0a09e35.mp3',
+        soundUrlReveal: 'https://files.catbox.moe/hzxzzb.ogg',
         // lottieWebScript: 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js',
         lottieSparkles: [
             'https://d35aaqx5ub95lt.cloudfront.net/lottie/e13df96082d0e4dbc6d78b6f5346e2a2.json',
@@ -1384,6 +1385,26 @@
 
                         if (target) {
                             STATE.revealEffectPlayed = true;
+
+                            // Play reveal audio effect
+                            if (USER_SETTINGS.enableButtonSound()) {
+                                async function playRevealSound() {
+                                    const audio = await httpRequest(
+                                        CONFIG.soundUrlReveal,
+                                        30 * 24 * 60 * 60,
+                                        false,
+                                        true,
+                                        true,
+                                        true,
+                                        'blob'
+                                    );
+                                    const audioUrl = URL.createObjectURL(audio.response);
+                                    const audioElement = new Audio(audioUrl);
+                                    audioElement.volume = USER_SETTINGS.buttonSoundVolume();
+                                    audioElement.play();
+                                }
+                                playRevealSound();
+                            }
 
                             const rect = target.getBoundingClientRect();
                             playLottieAnimation(target, WARM['explosionAnimation'], {
