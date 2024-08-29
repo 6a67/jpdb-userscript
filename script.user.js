@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.109
+// @version 0.1.110
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -1373,9 +1373,14 @@
                             return;
                         }
 
-                        const target =
+                        let target =
                             document.querySelector('.answer-box') ||
-                            document.querySelector('.result.kanji')?.querySelector('.stroke-order-kanji');
+                            document.querySelector('.result.kanji')?.querySelector('.stroke-order-kanji') ||
+                            document.querySelector('.result.kanji')?.querySelector('.kanji-font');
+
+                        if (!USER_SETTINGS.enableReplaceKanjiStrokeOrder() && !target) {
+                            target = document.querySelector('.result.kanji')?.querySelector('.plain').firstElementChild;
+                        }
 
                         if (target) {
                             STATE.revealEffectPlayed = true;
