@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.108
+// @version 0.1.109
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -118,7 +118,7 @@
         currentlyBuildingKanjiCache: false,
         cachedEffects: GM_getValue('cachedEffects', false),
         warmingEffectsPromise: null,
-        reviewRevealed: GM_getValue('reviewRevealed', false),
+        revealEffectPlayed: false,
     };
 
     let WARM = {};
@@ -1368,31 +1368,48 @@
             warmUpEffects().then(() => {
                 // check if url has "review?c=" in it
                 if (window.location.href.includes('review?c=')) {
-                    let target =
-                        document.querySelector('.answer-box') ||
-                        document.querySelector('.result.kanji')?.querySelector('.plain').firstElementChild;
-                    if (target) {
-                        target =
+                    function revealEffect() {
+                        if (STATE.revealEffectPlayed) {
+                            return;
+                        }
+
+                        const target =
                             document.querySelector('.answer-box') ||
-                            document.querySelector('.result.kanji')?.querySelector('.plain').firstElementChild;
-                        const rect = target.getBoundingClientRect();
-                        playLottieAnimation(target, WARM['explosionAnimation'], {
-                            loop: false,
-                            autoplay: true,
-                            renderer: 'svg',
-                            speed: 1.5,
-                            size: { width: rect.width, height: rect.height },
-                            opacity: 0.5,
-                        });
-                        playLottieAnimation(target, WARM['bigFireworkAnimation'], {
-                            loop: false,
-                            autoplay: true,
-                            renderer: 'svg',
-                            speed: 1.5,
-                            size: { width: rect.width, height: rect.height },
-                            opacity: 0.5,
-                        });
+                            document.querySelector('.result.kanji')?.querySelector('.stroke-order-kanji');
+
+                        if (target) {
+                            STATE.revealEffectPlayed = true;
+
+                            const rect = target.getBoundingClientRect();
+                            playLottieAnimation(target, WARM['explosionAnimation'], {
+                                loop: false,
+                                autoplay: true,
+                                renderer: 'svg',
+                                speed: 1.5,
+                                size: { width: rect.width, height: rect.height },
+                                opacity: 0.5,
+                            });
+                            playLottieAnimation(target, WARM['bigFireworkAnimation'], {
+                                loop: false,
+                                autoplay: true,
+                                renderer: 'svg',
+                                speed: 1.5,
+                                size: { width: rect.width, height: rect.height },
+                                opacity: 0.5,
+                            });
+                            return true;
+                        }
+                        return false;
                     }
+
+                    const observer = new MutationObserver(() => {
+                        if (revealEffect()) {
+                            observer.disconnect();
+                        }
+                    });
+                    observer.observe(document.body, { childList: true, subtree: true });
+
+                    revealEffect();
                 }
             });
         }
