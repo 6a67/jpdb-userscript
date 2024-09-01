@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.111
+// @version 0.1.112
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -2418,7 +2418,6 @@
             const reviewReveal = document.querySelector('.review-reveal');
             const sentenceTranslation = cardSentence?.parentElement?.querySelector('.sentence-translation');
             if (cardSentence && !sentenceTranslation && reviewReveal) {
-                console.log(cardSentence.innerHTML);
                 const jpElement = cardSentence.querySelector('.sentence');
                 const enElement = `<div style="display: flex;justify-content: center;"><div class="sentence-translation" style="">Click to translate</div></div>`;
                 cardSentence.insertAdjacentHTML('afterend', enElement);
