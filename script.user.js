@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.112
+// @version 0.1.113
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -2348,10 +2348,10 @@
     }
 
     function initMonolingualMachineTranslation() {
-        async function machineTranslate(text) {
+        async function machineTranslate(text, cacheTime = 7 * 24 * 60 * 60) {
             const response = await httpRequest(
                 `https://jpdb.io/search?q=${encodeURIComponent(text)}&lang=english#a`,
-                7 * 24 * 60 * 60,
+                cacheTime,
                 false,
                 false,
                 false,
@@ -2364,15 +2364,28 @@
                 const translationId = response.responseText.match(/translation\?id=(\d+)/)[1];
                 const translationResponse = await httpRequest(
                     `https://jpdb.io/translation?id=${translationId}`,
-                    7 * 24 * 60 * 60,
+                    cacheTime,
                     false,
                     false,
                     false,
                     false
                 );
-                return translationResponse.responseText.trim();
+                return {
+                    success: true,
+                    translation: translationResponse.responseText.trim(),
+                };
             } else {
-                return translation ? translation.textContent.trim() : 'Translation not found';
+                if (translation) {
+                    return {
+                        success: true,
+                        translation: translation.textContent.trim(),
+                    };
+                }
+
+                return {
+                    success: false,
+                    translation: '',
+                };
             }
         }
 
@@ -2402,13 +2415,19 @@
                     enElement.classList.add('pending-translation');
                     enElement.textContent = 'Click to translate';
                     usedInElement.appendChild(enElement);
+                    const cacheTime = 7 * 24 * 60 * 60;
                     async function translateText() {
                         const jpText = getJPText(jpElement);
                         enElement.textContent = 'Translating...';
-                        const translatedText = await machineTranslate(jpText);
-                        enElement.textContent = translatedText;
-                        enElement.classList.remove('pending-translation');
-                        enElement.removeEventListener('click', translateText);
+                        const { success, translation } = await machineTranslate(jpText, cacheTime);
+                        if (success) {
+                            enElement.textContent = translation;
+                            enElement.classList.remove('pending-translation');
+                            enElement.removeEventListener('click', translateText);
+                        } else {
+                            enElement.textContent = 'Translation failed. Click to try again.';
+                            cacheTime = 0;
+                        }
                     }
                     enElement.addEventListener('click', translateText);
                 }
@@ -2421,14 +2440,20 @@
                 const jpElement = cardSentence.querySelector('.sentence');
                 const enElement = `<div style="display: flex;justify-content: center;"><div class="sentence-translation" style="">Click to translate</div></div>`;
                 cardSentence.insertAdjacentHTML('afterend', enElement);
+                const cacheTime = 7 * 24 * 60 * 60;
                 async function translateText() {
                     const jpText = getJPText(jpElement);
                     const enElement = cardSentence.nextElementSibling.querySelector('.sentence-translation');
                     enElement.textContent = 'Translating...';
-                    const translatedText = await machineTranslate(jpText);
-                    enElement.textContent = translatedText;
-                    enElement.classList.remove('pending-translation');
-                    enElement.removeEventListener('click', translateText);
+                    const { success, translation } = await machineTranslate(jpText);
+                    if (success) {
+                        enElement.textContent = translation;
+                        enElement.classList.remove('pending-translation');
+                        enElement.removeEventListener('click', translateText);
+                    } else {
+                        enElement.textContent = 'Translation failed. Click to try again.';
+                        cacheTime = 0;
+                    }
                 }
                 cardSentence.nextElementSibling.querySelector('.sentence-translation').addEventListener('click', translateText);
             }
