@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.113
+// @version 0.1.114
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -2476,11 +2476,229 @@
         addMachineTranslation();
     }
 
+    function initInjectStatsIntoLearnPage() {
+        function addReviewStats() {
+            async function injectReviewStats() {
+                if (document.querySelector('.injected-stats')) return;
+
+                const container = document.querySelector('.container');
+                if (!container) return;
+                const table = container.querySelector('table');
+                if (!table) return;
+                const stats = table.parentElement;
+                const div = document.createElement('div');
+                stats.insertAdjacentElement('afterend', div);
+                div.classList.add('injected-stats');
+                const statsResponse = await httpRequest('https://jpdb.io/stats', -1);
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(statsResponse.responseText, 'text/html');
+                const chart = doc.getElementById('chart');
+
+                const scripts = doc.querySelectorAll('script');
+                let script = null;
+                scripts.forEach((s) => {
+                    if (s.textContent.includes('document.getElementById("chart")')) {
+                        script = s;
+                    }
+                });
+                console.log(script);
+                if (chart && script) {
+                    script.textContent = script.textContent.replace('DOMContentLoaded', 'loadInjectedStats');
+
+                    div.appendChild(chart);
+
+                    GM_addStyle(`
+                        #chart {
+                            height: 15rem !important;
+                        }
+                    `);
+
+                    const head = doc.querySelector('head');
+                    const scriptsInHead = head.querySelectorAll('script');
+                    const currentHead = document.head;
+                    const currentScripts = currentHead.querySelectorAll('script');
+
+                    const scriptPromises = [];
+
+                    scriptsInHead.forEach((s) => {
+                        let found = false;
+                        currentScripts.forEach((cs) => {
+                            if (s.src === cs.src) {
+                                found = true;
+                            }
+                        });
+                        if (!found) {
+                            const newScript = document.createElement('script');
+                            newScript.src = s.src;
+
+                            const scriptPromise = new Promise((resolve, reject) => {
+                                newScript.onload = resolve;
+                                newScript.onerror = reject;
+                            });
+                            scriptPromises.push(scriptPromise);
+
+                            currentHead.appendChild(newScript);
+                        }
+                    });
+
+                    const newScript = document.createElement('script');
+                    newScript.textContent = script.textContent;
+                    currentHead.appendChild(newScript);
+
+                    Promise.all(scriptPromises).then(() => {
+                        document.dispatchEvent(new Event('loadInjectedStats'));
+                    });
+                }
+            }
+            injectReviewStats();
+
+            let lastProcessedMutation = null;
+
+            const observer = new MutationObserver(async (mutations) => {
+                for (const mutation of mutations) {
+                    if (mutation === lastProcessedMutation) {
+                        continue;
+                    }
+                    lastProcessedMutation = mutation;
+                    if (mutation.type === 'childList') {
+                        if (mutation.target.classList.contains('container')) {
+                            await injectReviewStats();
+                        }
+                    }
+                }
+            });
+
+            observer.observe(document.body.querySelector('.container'), { childList: true, subtree: true });
+        }
+
+        function addKnownVocabularyStats() {
+            async function injectKnownVocabularyStats() {
+                if (document.querySelector('.injected-vocab-stats')) return;
+
+                const container = document.querySelector('.container');
+                if (!container) return;
+                const table = container.querySelector('table');
+                if (!table) return;
+
+                try {
+                    const knownVocabResponse = await httpRequest('https://jpdb.io/labs/known-vocabulary-over-time', -1);
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(knownVocabResponse.responseText, 'text/html');
+                    const chart = doc.getElementById('chart3');
+                    const tbody = document.createElement('tbody');
+                    tbody.classList.add('injected-vocab-stats');
+                    tbody.style.display = 'inline-block';
+                    table.querySelector('tbody').style.display = 'inline-block';
+
+                    tbody.appendChild(chart);
+                    table.appendChild(tbody);
+
+                    const head = doc.querySelector('head');
+                    const scriptsInHead = head.querySelectorAll('script');
+                    const currentHead = document.head;
+                    const currentScripts = currentHead.querySelectorAll('script');
+
+                    const scriptPromises = [];
+
+                    scriptsInHead.forEach((s) => {
+                        let found = false;
+                        currentScripts.forEach((cs) => {
+                            if (s.src === cs.src) {
+                                found = true;
+                            }
+                        });
+                        if (!found) {
+                            const newScript = document.createElement('script');
+                            newScript.src = s.src;
+
+                            const scriptPromise = new Promise((resolve, reject) => {
+                                newScript.onload = resolve;
+                                newScript.onerror = reject;
+                            });
+                            scriptPromises.push(scriptPromise);
+
+                            currentHead.appendChild(newScript);
+                        }
+                    });
+
+                    const scripts = doc.querySelectorAll('script');
+                    let script = null;
+                    scripts.forEach((s) => {
+                        if (s.textContent.includes('document.getElementById("chart3")')) {
+                            script = s;
+                        }
+                    });
+
+                    if (script) {
+                        script.textContent = script.textContent.replace('DOMContentLoaded', 'loadInjectedVocabStats');
+                        const dataRegex = /var\s?data\s?=\s?({\s?.+?\s?});/;
+                        let data = script.textContent.match(new RegExp(dataRegex))[1];
+                        // replace unquoted keys with quoted keys
+                        data = data.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2": ');
+                        const dataObj = JSON.parse(data);
+                        // find the first index of the first non-zero value in data["datasets"][0]["data"]
+                        const firstNonZeroIndex = dataObj['datasets'][0]['data'].findIndex((value) => value > 0);
+                        // remove every element before the first non-zero value in data["datasets"][0]["data"] and data["labels"]
+                        dataObj['datasets'][0]['data'] = dataObj['datasets'][0]['data'].slice(firstNonZeroIndex);
+                        dataObj['labels'] = dataObj['labels'].slice(firstNonZeroIndex);
+                        script.textContent = script.textContent.replace(dataRegex, `var data = ${JSON.stringify(dataObj)};`);
+
+                        const newScript = document.createElement('script');
+                        newScript.textContent = script.textContent;
+                        currentHead.appendChild(newScript);
+                    }
+
+                    Promise.all(scriptPromises).then(() => {
+                        const initialWidth = chart.style.width;
+                        const initialHeight = chart.style.height;
+                        try {
+                            document.dispatchEvent(new Event('loadInjectedVocabStats'));
+                        } catch (error) {}
+                        GM_addStyle(`
+                            .injected-vocab-stats {
+                                height: 10rem;
+                            }
+
+                            #chart3 {
+                                margin: 0 !important;
+                            }
+                        `);
+                    });
+                } catch (error) {
+                    console.warn('Failed to fetch known vocabulary stats:', error);
+                }
+            }
+            injectKnownVocabularyStats();
+
+            let lastProcessedMutation = null;
+
+            const observer = new MutationObserver(async (mutations) => {
+                for (const mutation of mutations) {
+                    if (mutation === lastProcessedMutation) {
+                        continue;
+                    }
+                    lastProcessedMutation = mutation;
+                    if (mutation.type === 'childList') {
+                        if (mutation.target.classList.contains('container')) {
+                            await injectKnownVocabularyStats();
+                        }
+                    }
+                }
+            });
+
+            observer.observe(document.body.querySelector('.container'), { childList: true, subtree: true });
+        }
+        addReviewStats();
+        addKnownVocabularyStats();
+    }
+
     function init() {
         injectFont();
         applyStyles();
         if (window.location.href === CONFIG.learnPageUrl) {
             initLearnPage();
+            // initInjectStatsIntoLearnPage();
         } else if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && USER_SETTINGS.enableButtonStyling()) {
             initReviewPage();
         }
