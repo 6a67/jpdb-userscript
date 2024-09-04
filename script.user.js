@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.114
+// @version 0.1.115
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -21,9 +21,9 @@
 (function () {
     'use strict';
 
-    // document.documentElement.style.display = 'none';
+    // document.body.style.display = 'none';
     // document.addEventListener(`${GM_info.script.name}-initialized`, () => {
-    //     document.documentElement.style.display = '';
+    //     document.body.style.display = '';
     // });
 
     class UserSetting {
@@ -188,6 +188,11 @@
             "I don't know this": 'これは知らない',
             [String.raw`/^Words \((.*?)\)$/`]: '単語（{1}）', // works as well with normal strings, but then the backslashes need to be escaped as well (e.g. `/^Words \\((.*?)\\)$/`)
             [String.raw`/^Kanji \((.*?)\)$/`]: '漢字（{1}）',
+            'Learn (': '漢字 (',
+            'Start reviewing': '復習を始める',
+            'Welcome back!': 'お帰りなさい！',
+            'Quiz': 'クイズ',
+            'Leaderboard': 'リーダーボード',
             'config.reviewButtonFontWeight': '500',
         },
     };
@@ -496,17 +501,6 @@
 
             svg.stroke-order-kanji {
                 overflow: visible;
-            }
-
-            /* Blur translation until hovered */
-            .sentence-translation {
-                filter: blur(0.5rem);
-                transition: filter 0.2s;
-                cursor: pointer;
-            }
-
-            .unblur {
-                filter: blur(0) !important;
             }
 
             /* Kanji copy button */
@@ -2206,7 +2200,7 @@
         });
     }
 
-    function initTranslation() {
+    async function initTranslation() {
         // Flag to prevent observer from triggering itself
         let isTranslating = false;
 
@@ -2257,17 +2251,25 @@
         function translateElement(element) {
             if (element.nodeType !== Node.ELEMENT_NODE) return;
 
+            // Check if the element has already been translated
+            if (element.classList.contains('translated')) return;
+
             let wasTranslated = false;
 
             // Translate text content if the element only contains text
-            if (element.childNodes.length === 1 && element.childNodes[0].nodeType === Node.TEXT_NODE) {
-                const originalText = element.textContent.trim();
-                const translatedText = translate(originalText);
-                if (originalText !== translatedText) {
-                    element.textContent = translatedText;
-                    wasTranslated = true;
+            element.childNodes.forEach((node) => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const originalText = node.textContent.trim();
+                    if (originalText) {
+                        // Only process non-empty text
+                        const translatedText = translate(originalText);
+                        if (originalText !== translatedText) {
+                            node.textContent = translatedText;
+                            wasTranslated = true;
+                        }
+                    }
                 }
-            }
+            });
 
             // Translate attributes
             const translatableAttributes = ['placeholder', 'value', 'title', 'alt', 'aria-label'];
@@ -2300,9 +2302,9 @@
                 }
             }
 
-            // Add lang="ja" attribute if translation occurred
-            if (wasTranslated && !element.hasAttribute('lang')) {
+            if (wasTranslated) {
                 element.setAttribute('lang', USER_SETTINGS.translationLanguage());
+                element.classList.add('translated');
             }
         }
 
