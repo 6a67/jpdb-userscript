@@ -246,6 +246,11 @@
             'Use font instead of SVG',
             'If the previous option is enabled, this will use a font for the stroke order instead of an SVG.'
         ),
+        enableSentenceBlur: new UserSetting(
+            'enableSentenceBlur',
+            true,
+            'Blur sentence translation on the back of the card. Can be clicked to toggle blur.',
+        ),
         searchBarOverlayTransition: new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay'),
         alwaysShowKanjiGrid: new UserSetting('alwaysShowKanjiGrid', false, 'Always show kanji grid'),
         enableMonolingualMachineTranslation: new UserSetting(
@@ -698,6 +703,18 @@
             .kanji.plain svg {
                 position: relative;
                 z-index: 2;
+            }
+        `,
+
+        sentenceBlur: `
+            .sentence-translation {
+                filter: blur(0.5rem);
+                transition: filter 0.2s;
+                cursor: pointer;
+            }
+
+            .unblur {
+                filter: blur(0) !important;
             }
         `,
     };
@@ -2193,6 +2210,8 @@
     }
 
     function unblurSentenceOnClick() {
+        GM_addStyle(STYLES.sentenceBlur);
+
         document.addEventListener('click', function (event) {
             if (event.target.classList.contains('sentence-translation')) {
                 event.target.classList.toggle('unblur');
@@ -2725,7 +2744,9 @@
         initCtrlEnter();
         initShowSearchBar();
 
-        unblurSentenceOnClick();
+        if (USER_SETTINGS.enableSentenceBlur()) {
+            unblurSentenceOnClick();
+        }
 
         if (USER_SETTINGS.enableMonolingualMachineTranslation()) {
             initMonolingualMachineTranslation();
