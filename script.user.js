@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.119
+// @version 0.1.120
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -2747,6 +2747,15 @@
         return distance;
     }
 
+    function getVerticalDistanceTopToTop(elem1, elem2) {
+        const rect1 = elem1.getBoundingClientRect();
+        const rect2 = elem2.getBoundingClientRect();
+
+        const distance = rect2.top - rect1.top;
+
+        return distance;
+    }
+
     function initVerticalSentence() {
         GM_addStyle(STYLES.verticalSentence);
 
@@ -2761,6 +2770,7 @@
                 const verticalDistance = getVerticalDistance(iconLink, showCheckboxExamplesLabel);
                 heights.push(`${Math.round(verticalDistance)}px`);
             }
+
             const reviewButtonGroup = document.querySelector('.review-button-group');
 
             if (iconLink && reviewButtonGroup) {
@@ -2769,6 +2779,24 @@
             }
 
             const cardSentence = document.querySelector('.card-sentence');
+
+            if (!iconLink) {
+                if (!cardSentence) {
+                    return;
+                }
+                
+                if(showCheckboxExamplesLabel) {
+                    const verticalDistance = getVerticalDistanceTopToTop(cardSentence, showCheckboxExamplesLabel);
+                    heights.push(`${Math.round(verticalDistance)}px`);
+                }
+
+                if (reviewButtonGroup) {
+                    const verticalDistance = getVerticalDistanceTopToTop(cardSentence, reviewButtonGroup);
+                    heights.push(`${Math.round(verticalDistance)}px`);
+                }
+            }
+
+            
             if (cardSentence) {
                 cardSentence.style.height = `calc(max(10px, min(${heights.join(', ')}) * 0.99)`;
             }
