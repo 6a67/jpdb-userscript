@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.120
+// @version 0.1.121
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -725,8 +725,10 @@
                 position: absolute;
                 right: 1rem;
                 height: 50vh;
-                transform: translateY(2rem);
                 letter-spacing: 0.15rem;
+            }
+            .card-sentence:has(.icon-link) {
+                transform: translateY(2rem);
             }
             .card-sentence .icon-link {
                 position: absolute;
@@ -734,6 +736,8 @@
             }
             .card-sentence .ti-pencil {
                 position: absolute;
+            }
+            .card-sentence:has(.ti-volume) .ti-pencil {
                 right: 2rem;
             }
             .card-sentence .sentence {
@@ -2784,8 +2788,8 @@
                 if (!cardSentence) {
                     return;
                 }
-                
-                if(showCheckboxExamplesLabel) {
+
+                if (showCheckboxExamplesLabel) {
                     const verticalDistance = getVerticalDistanceTopToTop(cardSentence, showCheckboxExamplesLabel);
                     heights.push(`${Math.round(verticalDistance)}px`);
                 }
@@ -2796,7 +2800,6 @@
                 }
             }
 
-            
             if (cardSentence) {
                 cardSentence.style.height = `calc(max(10px, min(${heights.join(', ')}) * 0.99)`;
             }
