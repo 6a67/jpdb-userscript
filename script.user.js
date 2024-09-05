@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.117
+// @version 0.1.118
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -2767,7 +2767,11 @@
                 const verticalDistance = getVerticalDistance(iconLink, reviewButtonGroup);
                 heights.push(`${Math.round(verticalDistance)}px`);
             }
-            document.querySelector('.card-sentence').style.height = `calc(max(10px, min(${heights.join(', ')}) * 0.99))`;
+
+            const cardSentence = document.querySelector('.card-sentence');
+            if (cardSentence) {
+                cardSentence.style.height = `calc(max(10px, min(${heights.join(', ')}) * 0.99)`;
+            }
         }
         adjustHeight();
 
