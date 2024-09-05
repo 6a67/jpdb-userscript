@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.115
+// @version 0.1.116
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -249,8 +249,9 @@
         enableSentenceBlur: new UserSetting(
             'enableSentenceBlur',
             true,
-            'Blur sentence translation on the back of the card. Can be clicked to toggle blur.',
+            'Blur sentence translation on the back of the card. Can be clicked to toggle blur.'
         ),
+        enableVerticalSentence: new UserSetting('enableVerticalSentence', false, 'Display sentence vertically on the review card'),
         searchBarOverlayTransition: new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay'),
         alwaysShowKanjiGrid: new UserSetting('alwaysShowKanjiGrid', false, 'Always show kanji grid'),
         enableMonolingualMachineTranslation: new UserSetting(
@@ -715,6 +716,29 @@
 
             .unblur {
                 filter: blur(0) !important;
+            }
+        `,
+
+        verticalSentence: `
+            .card-sentence {
+                writing-mode: vertical-rl;
+                position: absolute;
+                right: 1rem;
+                height: 60vh;
+                transform: translateY(2rem);
+                letter-spacing: 0.15rem;
+            }
+            .card-sentence .icon-link {
+                position: absolute;
+                transform: translateY(-2rem);
+            }
+            .card-sentence .ti-pencil {
+                position: absolute;
+                right: 2rem;
+            }
+            .card-sentence .sentence {
+                text-align: unset;
+                line-height: 2rem;
             }
         `,
     };
@@ -2714,6 +2738,46 @@
         addKnownVocabularyStats();
     }
 
+    function getVerticalDistance(elem1, elem2) {
+        const rect1 = elem1.getBoundingClientRect();
+        const rect2 = elem2.getBoundingClientRect();
+
+        const distance = rect2.top - rect1.bottom;
+
+        return distance;
+    }
+
+    function initVerticalSentence() {
+        GM_addStyle(STYLES.verticalSentence);
+
+        function adjustHeight() {
+            const iconLink = document.querySelector('.sentence .icon-link');
+            const showCheckboxExamplesLabel = document.getElementById('show-checkbox-examples-label');
+
+            if (!iconLink || !showCheckboxExamplesLabel) return;
+
+            const cardSentence = document.querySelector('.card-sentence');
+            const verticalDistance = getVerticalDistance(iconLink, showCheckboxExamplesLabel);
+            cardSentence.style.height = `${verticalDistance}px`;
+        }
+        adjustHeight();
+
+        // add observer
+        let lastProcessedMutation = null;
+
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation === lastProcessedMutation) {
+                    continue;
+                }
+                lastProcessedMutation = mutation;
+                adjustHeight();
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -2722,6 +2786,10 @@
             // initInjectStatsIntoLearnPage();
         } else if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && USER_SETTINGS.enableButtonStyling()) {
             initReviewPage();
+        }
+
+        if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && USER_SETTINGS.enableVerticalSentence()) {
+            initVerticalSentence();
         }
 
         if (window.location.href === CONFIG.learnPageUrl || window.location.href == CONFIG.deckListPageUrl) {
