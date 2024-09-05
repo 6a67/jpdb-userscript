@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.116
+// @version 0.1.117
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -724,7 +724,7 @@
                 writing-mode: vertical-rl;
                 position: absolute;
                 right: 1rem;
-                height: 60vh;
+                height: 50vh;
                 transform: translateY(2rem);
                 letter-spacing: 0.15rem;
             }
@@ -2754,15 +2754,23 @@
             const iconLink = document.querySelector('.sentence .icon-link');
             const showCheckboxExamplesLabel = document.getElementById('show-checkbox-examples-label');
 
-            if (!iconLink || !showCheckboxExamplesLabel) return;
+            // let heights = [getComputedStyle(document.querySelector('.card-sentence')).height];
+            const heights = [];
 
-            const cardSentence = document.querySelector('.card-sentence');
-            const verticalDistance = getVerticalDistance(iconLink, showCheckboxExamplesLabel);
-            cardSentence.style.height = `${verticalDistance}px`;
+            if (iconLink && showCheckboxExamplesLabel) {
+                const verticalDistance = getVerticalDistance(iconLink, showCheckboxExamplesLabel);
+                heights.push(`${Math.round(verticalDistance)}px`);
+            }
+            const reviewButtonGroup = document.querySelector('.review-button-group');
+
+            if (reviewButtonGroup) {
+                const verticalDistance = getVerticalDistance(iconLink, reviewButtonGroup);
+                heights.push(`${Math.round(verticalDistance)}px`);
+            }
+            document.querySelector('.card-sentence').style.height = `calc(max(10px, min(${heights.join(', ')}) * 0.99))`;
         }
         adjustHeight();
 
-        // add observer
         let lastProcessedMutation = null;
 
         const observer = new MutationObserver((mutations) => {
@@ -2776,6 +2784,7 @@
         });
 
         observer.observe(document.body, { childList: true, subtree: true });
+        window.addEventListener('resize', adjustHeight);
     }
 
     function init() {
