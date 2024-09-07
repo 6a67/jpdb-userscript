@@ -724,8 +724,7 @@
             .card-sentence {
                 writing-mode: vertical-rl;
                 position: absolute;
-                /* right: 1rem; */
-                left: 100%;
+                right: 1rem;
                 height: 50vh;
                 letter-spacing: 0.15rem;
             }
@@ -2765,64 +2764,47 @@
     function initVerticalSentence() {
         GM_addStyle(STYLES.verticalSentence);
 
-        // function adjustHeight() {
-        //     const iconLink = document.querySelector('.sentence .icon-link');
-        //     const showCheckboxExamplesLabel = document.getElementById('show-checkbox-examples-label');
-
-        //     // let heights = [getComputedStyle(document.querySelector('.card-sentence')).height];
-        //     const heights = [];
-
-        //     if (iconLink && showCheckboxExamplesLabel) {
-        //         const verticalDistance = getVerticalDistance(iconLink, showCheckboxExamplesLabel);
-        //         heights.push(`${Math.round(verticalDistance)}px`);
-        //     }
-
-        //     const reviewButtonGroup = document.querySelector('.review-button-group');
-
-        //     if (iconLink && reviewButtonGroup) {
-        //         const verticalDistance = getVerticalDistance(iconLink, reviewButtonGroup);
-        //         heights.push(`${Math.round(verticalDistance)}px`);
-        //     }
-
-        //     const cardSentence = document.querySelector('.card-sentence');
-
-        //     if (!iconLink) {
-        //         if (!cardSentence) {
-        //             return;
-        //         }
-
-        //         if (showCheckboxExamplesLabel) {
-        //             const verticalDistance = getVerticalDistanceTopToTop(cardSentence, showCheckboxExamplesLabel);
-        //             heights.push(`${Math.round(verticalDistance)}px`);
-        //         }
-
-        //         if (reviewButtonGroup) {
-        //             const verticalDistance = getVerticalDistanceTopToTop(cardSentence, reviewButtonGroup);
-        //             heights.push(`${Math.round(verticalDistance)}px`);
-        //         }
-        //     }
-
-        //     if (cardSentence) {
-        //         cardSentence.style.height = `calc(max(10px, min(${heights.join(', ')}) * 0.99)`;
-        //     }
-        // }
-
         function adjustHeight() {
-            const cardSentence = document.querySelector('.card-sentence');
-            const container = document.querySelector('.container');
+            const iconLink = document.querySelector('.sentence .icon-link');
+            const showCheckboxExamplesLabel = document.getElementById('show-checkbox-examples-label');
 
-            if (!cardSentence || !container) {
-                return;
+            // let heights = [getComputedStyle(document.querySelector('.card-sentence')).height];
+            const heights = [];
+
+            if (iconLink && showCheckboxExamplesLabel) {
+                const verticalDistance = getVerticalDistance(iconLink, showCheckboxExamplesLabel);
+                heights.push(`${Math.round(verticalDistance)}px`);
             }
 
-            // match height of card-sentence to distance between top of card-sentence and bot of container
-            const rectCardSentence = cardSentence.getBoundingClientRect();
-            const rectContainer = container.getBoundingClientRect();
-            console.log('cardTop', rectCardSentence.top, 'containerBot', rectContainer.bottom);
-            const distance = rectContainer.bottom - rectCardSentence.top;
-            cardSentence.style.height = Math.max(distance, 10) + 'px';
-        }
+            const reviewButtonGroup = document.querySelector('.review-button-group');
 
+            if (iconLink && reviewButtonGroup) {
+                const verticalDistance = getVerticalDistance(iconLink, reviewButtonGroup);
+                heights.push(`${Math.round(verticalDistance)}px`);
+            }
+
+            const cardSentence = document.querySelector('.card-sentence');
+
+            if (!iconLink) {
+                if (!cardSentence) {
+                    return;
+                }
+
+                if (showCheckboxExamplesLabel) {
+                    const verticalDistance = getVerticalDistanceTopToTop(cardSentence, showCheckboxExamplesLabel);
+                    heights.push(`${Math.round(verticalDistance)}px`);
+                }
+
+                if (reviewButtonGroup) {
+                    const verticalDistance = getVerticalDistanceTopToTop(cardSentence, reviewButtonGroup);
+                    heights.push(`${Math.round(verticalDistance)}px`);
+                }
+            }
+
+            if (cardSentence) {
+                cardSentence.style.height = `calc(max(10px, min(${heights.join(', ')}) * 0.99)`;
+            }
+        }
         adjustHeight();
 
         let lastProcessedMutation = null;
