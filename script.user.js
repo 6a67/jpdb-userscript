@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.121
+// @version 0.1.122
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -193,6 +193,7 @@
             'Welcome back!': 'お帰りなさい！',
             'Quiz': 'クイズ',
             'Leaderboard': 'リーダーボード',
+            'Meanings': '意味',
             'config.reviewButtonFontWeight': '500',
         },
     };
