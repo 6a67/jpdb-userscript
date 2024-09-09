@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.124
+// @version 0.1.125
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -2765,44 +2765,67 @@
         GM_addStyle(STYLES.verticalSentence);
 
         function adjustHeight() {
-            const iconLink = document.querySelector('.sentence .icon-link');
-            const showCheckboxExamplesLabel = document.getElementById('show-checkbox-examples-label');
+            const windowWidth = window.innerWidth;
+            const containerWidth = document.querySelector('.container').clientWidth;
 
-            // let heights = [getComputedStyle(document.querySelector('.card-sentence')).height];
-            const heights = [];
+            if (windowWidth / containerWidth > 4 / 3) {
+                const cardSentence = document.querySelector('.card-sentence');
+                const container = document.querySelector('.container');
 
-            if (iconLink && showCheckboxExamplesLabel) {
-                const verticalDistance = getVerticalDistance(iconLink, showCheckboxExamplesLabel);
-                heights.push(`${Math.round(verticalDistance)}px`);
-            }
-
-            const reviewButtonGroup = document.querySelector('.review-button-group');
-
-            if (iconLink && reviewButtonGroup) {
-                const verticalDistance = getVerticalDistance(iconLink, reviewButtonGroup);
-                heights.push(`${Math.round(verticalDistance)}px`);
-            }
-
-            const cardSentence = document.querySelector('.card-sentence');
-
-            if (!iconLink) {
-                if (!cardSentence) {
+                if (!cardSentence || !container) {
                     return;
                 }
 
-                if (showCheckboxExamplesLabel) {
-                    const verticalDistance = getVerticalDistanceTopToTop(cardSentence, showCheckboxExamplesLabel);
+                const rectCardSentence = cardSentence.getBoundingClientRect();
+                const rectContainer = container.getBoundingClientRect();
+                console.log('cardTop', rectCardSentence.top, 'containerBot', rectContainer.bottom);
+                const distance = rectContainer.bottom - rectCardSentence.top;
+                cardSentence.style = '';
+
+                cardSentence.style.height = Math.max(distance, 10) + 'px';
+                cardSentence.style.right = 'unset';
+                cardSentence.style.left = '100%';
+            } else {
+                const iconLink = document.querySelector('.sentence .icon-link');
+                const showCheckboxExamplesLabel = document.getElementById('show-checkbox-examples-label');
+
+                // let heights = [getComputedStyle(document.querySelector('.card-sentence')).height];
+                const heights = [];
+
+                if (iconLink && showCheckboxExamplesLabel) {
+                    const verticalDistance = getVerticalDistance(iconLink, showCheckboxExamplesLabel);
                     heights.push(`${Math.round(verticalDistance)}px`);
                 }
 
-                if (reviewButtonGroup) {
-                    const verticalDistance = getVerticalDistanceTopToTop(cardSentence, reviewButtonGroup);
+                const reviewButtonGroup = document.querySelector('.review-button-group');
+
+                if (iconLink && reviewButtonGroup) {
+                    const verticalDistance = getVerticalDistance(iconLink, reviewButtonGroup);
                     heights.push(`${Math.round(verticalDistance)}px`);
                 }
-            }
 
-            if (cardSentence) {
-                cardSentence.style.height = `calc(max(10px, min(${heights.join(', ')}) * 0.99)`;
+                const cardSentence = document.querySelector('.card-sentence');
+
+                if (!iconLink) {
+                    if (!cardSentence) {
+                        return;
+                    }
+
+                    if (showCheckboxExamplesLabel) {
+                        const verticalDistance = getVerticalDistanceTopToTop(cardSentence, showCheckboxExamplesLabel);
+                        heights.push(`${Math.round(verticalDistance)}px`);
+                    }
+
+                    if (reviewButtonGroup) {
+                        const verticalDistance = getVerticalDistanceTopToTop(cardSentence, reviewButtonGroup);
+                        heights.push(`${Math.round(verticalDistance)}px`);
+                    }
+                }
+
+                if (cardSentence) {
+                    cardSentence.style = '';
+                    cardSentence.style.height = `calc(max(10px, min(${heights.join(', ')}) * 0.99)`;
+                }
             }
         }
         adjustHeight();
