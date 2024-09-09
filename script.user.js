@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.126
+// @version 0.1.127
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -736,11 +736,11 @@
                 position: absolute;
                 transform: translateY(-2rem);
             }
-            .card-sentence .ti-pencil {
+            .card-sentence .icon-link:has(.ti-pencil) {
                 position: absolute;
             }
-            .card-sentence:has(.ti-volume) .ti-pencil {
-                right: 2rem;
+            .card-sentence:has(.ti-volume) .icon-link:has(.ti-pencil) {
+                right: 2.25rem;
             }
             .card-sentence .sentence {
                 text-align: unset;
