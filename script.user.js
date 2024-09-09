@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.125
+// @version 0.1.126
 // @description Script for JPDB that adds some styling and functionality
 // @match https://jpdb.io/*
 // @grant GM_addStyle
@@ -189,6 +189,7 @@
             [String.raw`/^Words \((.*?)\)$/`]: '単語（{1}）', // works as well with normal strings, but then the backslashes need to be escaped as well (e.g. `/^Words \\((.*?)\\)$/`)
             [String.raw`/^Kanji \((.*?)\)$/`]: '漢字（{1}）',
             'Learn (': '学習 (',
+            'Built-in decks': '内蔵デッキ',
             'Start reviewing': '復習を始める',
             'Welcome back!': 'お帰りなさい！',
             'Quiz': 'クイズ',
