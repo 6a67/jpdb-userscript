@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.127
+// @version 0.1.128
 // @description Script for JPDB that adds some styling and functionality
-// @match https://jpdb.io/*
+// @match *://jpdb.io/*
 // @grant GM_addStyle
 // @grant GM_xmlhttpRequest
 // @grant GM_setValue
