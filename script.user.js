@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.129
+// @version 0.1.130
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -724,6 +724,7 @@
         verticalSentence: `
             .card-sentence {
                 writing-mode: vertical-rl;
+                text-orientation: upright;
                 position: absolute;
                 right: 1rem;
                 height: 50vh;
