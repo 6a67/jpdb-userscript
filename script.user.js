@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.128
+// @version 0.1.129
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -220,7 +220,7 @@
         ),
         buttonSoundVolume: new UserSetting(
             'buttonSoundVolume',
-            1,
+            0.7,
             'Button audio volume',
             'If button audio is enabled, this will set the volume of the button sound.',
             null,
@@ -255,10 +255,10 @@
         ),
         enableVerticalSentence: new UserSetting('enableVerticalSentence', false, 'Display sentence vertically on the review card'),
         searchBarOverlayTransition: new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay'),
-        alwaysShowKanjiGrid: new UserSetting('alwaysShowKanjiGrid', false, 'Always show kanji grid'),
+        alwaysShowKanjiGrid: new UserSetting('alwaysShowKanjiGrid', true, 'Always show kanji grid'),
         enableMonolingualMachineTranslation: new UserSetting(
             'enableMonolingualMachineTranslation',
-            false,
+            true,
             'Enable machine translation for monolingual sentences',
             'Shows a placeholder sentence that can be clicked to translate the sentence using JPDBs machine translation.'
         ),
