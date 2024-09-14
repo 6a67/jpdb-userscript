@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.131
+// @version 0.1.132
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -2785,7 +2785,6 @@
 
                 const rectCardSentence = cardSentence.getBoundingClientRect();
                 const rectContainer = container.getBoundingClientRect();
-                console.log('cardTop', rectCardSentence.top, 'containerBot', rectContainer.bottom);
                 const distance = rectContainer.bottom - rectCardSentence.top;
                 cardSentence.style = '';
 
