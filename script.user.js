@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.132
+// @version 0.1.133
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -2852,6 +2852,82 @@
         window.addEventListener('resize', adjustHeight);
     }
 
+    async function initDropdownOnReviewPage() {
+        const mutex = {
+            locked: false,
+            queue: [],
+            lock: async function () {
+                if (this.locked) {
+                    await new Promise((resolve) => this.queue.push(resolve));
+                }
+                this.locked = true;
+            },
+            unlock: function () {
+                this.locked = false;
+                const next = this.queue.shift();
+                if (next) next();
+            },
+        };
+
+        async function addDropdown() {
+            if (document.querySelector('.inserted-dropdown')) return;
+
+            await mutex.lock();
+            try {
+                // Double-check after acquiring the lock
+                if (document.querySelector('.inserted-dropdown')) {
+                    return;
+                }
+
+                const answerBox = document.querySelector('.answer-box');
+                if (!answerBox) return;
+                const vocabLink = answerBox.querySelector('a[href*="/vocabulary/"]');
+                if (!vocabLink) return;
+
+                const url = new URL(vocabLink.href, window.location.origin);
+
+                const response = await httpRequest(url.href, -1);
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(response.responseText, 'text/html');
+                let menu = doc.querySelector('.menu .dropdown');
+                if (!menu) return;
+
+                menu = menu.parentElement;
+
+                const plain = answerBox.querySelector('.plain');
+                if (!plain) return;
+
+                menu.classList.add('inserted-dropdown');
+                menu.style.justifyContent = 'flex-start';
+                menu.style.fontSize = '1rem';
+                menu.style.fontFamily = getComputedStyle(document.body).fontFamily;
+
+                plain.insertBefore(menu, plain.firstChild);
+                const menuWidth = menu.getBoundingClientRect().width;
+                menu.style.marginRight = `-${menuWidth}px`;
+            } finally {
+                mutex.unlock();
+            }
+        }
+
+        await addDropdown();
+
+        let lastProcessedMutation = null;
+
+        const observer = new MutationObserver(async (mutations) => {
+            for (const mutation of mutations) {
+                if (mutation === lastProcessedMutation) {
+                    continue;
+                }
+                lastProcessedMutation = mutation;
+                await addDropdown();
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -2864,6 +2940,10 @@
 
         if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && USER_SETTINGS.enableVerticalSentence()) {
             initVerticalSentence();
+        }
+
+        if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix)) {
+            initDropdownOnReviewPage();
         }
 
         if (window.location.href === CONFIG.learnPageUrl || window.location.href == CONFIG.deckListPageUrl) {
