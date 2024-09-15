@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.133
+// @version 0.1.134
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -163,6 +163,7 @@
 
     const DEBUG = {
         enableCacheLogs: false,
+        enableProgress: GM_getValue('progress_enableProgress', false),
     };
 
     const TRANSLATIONS = {
@@ -1124,7 +1125,10 @@
                         resolve();
                     }, timeToWait);
                 };
-                audio.play();
+                audio.play().catch(() => {
+                    URL.revokeObjectURL(audioUrl);
+                    resolve();
+                });
             });
         }
     }
@@ -1448,7 +1452,9 @@
                                     const audioUrl = URL.createObjectURL(audio.response);
                                     const audioElement = new Audio(audioUrl);
                                     audioElement.volume = USER_SETTINGS.buttonSoundVolume();
-                                    audioElement.play();
+                                    audioElement.play().catch((error) => {
+                                        console.error('Error playing reveal sound:', error);
+                                    });
                                 }
                                 playRevealSound();
                             }
@@ -2928,6 +2934,183 @@
         observer.observe(document.body, { childList: true, subtree: true });
     }
 
+    async function initReviewProgress() {
+        function cardRevealed() {
+            return !!document.querySelector('.review-reveal');
+        }
+
+        // async function getTimezoneOffset() {
+        //     if (GM_getValue('progress_timezoneOffset')) {
+        //         return GM_getValue('progress_timezoneOffset');
+        //     }
+
+        //     const response = await httpRequest('https://jpdb.io/settings', -1);
+        //     const parser = new DOMParser();
+        //     const doc = parser.parseFromString(response.responseText, 'text/html');
+        //     // find <select> id="timezone-offset" and get selected value
+        //     const timezoneOffset = doc.querySelector('#timezone-offset');
+        //     const tzo = timezoneOffset.value;
+        //     GM_setValue('progress_timezoneOffset', tzo);
+        //     return tzo; // offset is in minutes relative to UTC
+        // }
+
+        // async function beginReviewSession() {
+        //     const lastReviewStarted = GM_getValue('progress_lastReviewStarted', 0);
+        //     const timezoneOffset = await getTimezoneOffset();
+
+        //     // Convert timezoneOffset from minutes to milliseconds
+        //     const offsetMs = timezoneOffset * 60 * 1000;
+
+        //     // Get the current UTC timestamp
+        //     const now = Date.now();
+
+        //     // Calculate the start of the current day in user's timezone
+        //     const startOfDay = new Date(now);
+        //     startOfDay.setUTCHours(0, 0, 0, 0);
+        //     const startOfDayTimestamp = startOfDay.getTime() - offsetMs;
+
+        //     // Check if last review started was before 0:00 in user's timezone
+        //     if (lastReviewStarted < startOfDayTimestamp) {
+        //         // Reset the reviewsSubmitted count
+        //         GM_setValue('progress_reviewsSubmitted', 0);
+        //         GM_setValue('progress_lastReviewStarted', now);
+        //     }
+        // }
+
+        function getOpenReviews() {
+            const learnNavItem = document.querySelector('.nav-item[href*="/learn"]');
+            const span = learnNavItem.querySelector('span');
+            if ((span && getComputedStyle(span).color === 'red') || getComputedStyle(span).color === 'rgb(255, 0, 0)') {
+                const openReviews = Number(span.textContent);
+                return openReviews;
+            }
+            return 0;
+        }
+
+        async function getNewCardLimit() {
+            const response = await httpRequest('https://jpdb.io/settings', 24 * 60 * 60);
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(response.responseText, 'text/html');
+            const newCardLimit = doc.querySelector('#max-new-cards-per-day');
+            return Number(newCardLimit.value);
+        }
+
+        async function getReviewCountFromStatsPage() {
+            let response = null;
+            if (cardRevealed()) {
+                response = await httpRequest('https://jpdb.io/stats', 9999);
+            } else {
+                response = await httpRequest('https://jpdb.io/stats', 3);
+            }
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(response.responseText, 'text/html');
+            const scripts = doc.querySelectorAll('script');
+
+            let script = null;
+            scripts.forEach((s) => {
+                if (s.textContent.includes('document.getElementById("chart")')) {
+                    script = s;
+                }
+            });
+
+            if (script) {
+                const dataRegex = /var\s?data\s?=\s?({\s?.+?\s?});/;
+                let data = script.textContent.match(new RegExp(dataRegex))[1];
+                // replace unquoted keys with quoted keys
+                data = data.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2": ');
+                data = data.replace(/,(\s*[}\]])/g, '$1');
+                const dataObj = JSON.parse(data);
+                // filter where "label" has "old" and "failed" in it (case insensitive)
+                const oldCardsFailed = dataObj['datasets'].find((dataset) => dataset['label'].toLowerCase().includes('old') && dataset['label'].toLowerCase().includes('failed'));
+                const oldCardsPassed = dataObj['datasets'].find((dataset) => dataset['label'].toLowerCase().includes('old') && dataset['label'].toLowerCase().includes('passed'));
+                const newCards = dataObj['datasets'].find((dataset) => dataset['label'].toLowerCase().includes('new'));
+
+                const oldCardsCount =
+                    oldCardsFailed['data'][oldCardsFailed['data'].length - 1] + oldCardsPassed['data'][oldCardsPassed['data'].length - 1];
+                const newCardsCount = newCards['data'][newCards['data'].length - 1];
+
+                return {
+                    oldCardsCount,
+                    newCardsCount,
+                };
+            }
+            return {
+                oldCardsCount: 0,
+                newCardsCount: 0,
+            };
+        }
+
+        async function displayProgress() {
+            // insert {reviewsSubmitted}/{reviewsSubmitted+openReviews} to top left
+            let openReviews = getOpenReviews();
+            // const reviewsSubmitted = GM_getValue('progress_reviewsSubmitted', 0);
+            const { oldCardsCount, newCardsCount } = await getReviewCountFromStatsPage();
+            const reviewsSubmitted = oldCardsCount + newCardsCount;
+            if (newCardsCount > 0) {
+                const newCardLimit = await getNewCardLimit();
+                openReviews += newCardLimit - newCardsCount;
+            }
+            const progress = document.createElement('div');
+            progress.classList.add('review-progress');
+            progress.style.position = 'fixed';
+            progress.style.top = '0';
+            progress.style.left = '0';
+            progress.style.zIndex = '1000';
+            progress.style.padding = '0.5rem';
+            progress.style.background = 'rgba(0, 0, 0, 0.5)';
+            progress.style.color = 'white';
+            progress.style.fontFamily = 'monospace';
+            progress.style.fontSize = '1rem';
+            progress.style.fontWeight = 'bold';
+            progress.textContent = `${reviewsSubmitted}/${reviewsSubmitted + openReviews}`;
+            if (document.querySelector('.review-progress')) {
+                // document.querySelector('.review-progress').textContent = `${reviewsSubmitted}/${reviewsSubmitted + openReviews}`;
+                return;
+            } else {
+                document.body.appendChild(progress);
+            }
+        }
+
+        // async function attachSubmitListeners() {
+        //     if (!cardRevealed()) {
+        //         return;
+        //     }
+        //     const submitButtons = document.querySelectorAll('.review-button-group [type="submit"]');
+
+        //     submitButtons.forEach((button) => {
+        //         if (!button.dataset.listenerAttached) {
+        //             button.addEventListener('click', () => {
+        //                 // Increase the GM value when submitted
+        //                 let count = GM_getValue('progress_reviewsSubmitted', 0);
+        //                 GM_setValue('progress_reviewsSubmitted', count + 1);
+        //             });
+        //             console.log('attached listener');
+        //             button.dataset.listenerAttached = true;
+        //         }
+        //     });
+        // }
+
+        // attachSubmitListeners();
+        displayProgress();
+        // beginReviewSession();
+
+        let lastProcessedMutation = null;
+
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation === lastProcessedMutation) {
+                    continue;
+                }
+                lastProcessedMutation = mutation;
+                // attachSubmitListeners();
+                displayProgress();
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -2944,6 +3127,10 @@
 
         if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix)) {
             initDropdownOnReviewPage();
+        }
+
+        if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && DEBUG.enableProgress) {
+            initReviewProgress();
         }
 
         if (window.location.href === CONFIG.learnPageUrl || window.location.href == CONFIG.deckListPageUrl) {
