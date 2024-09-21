@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.137
+// @version 0.1.138
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -220,13 +220,13 @@
         settings.enableButtonStyling = new UserSetting(
             'enableButtonStyling',
             true,
-            'Enable button styling',
-            'Adds styling to the buttons on the review page.'
+            'Button styling',
+            'Apply custom styles to review page buttons.'
         );
         settings.enableButtonEffects = new UserSetting(
             'enableButtonEffects',
             true,
-            'Enable button effects',
+            'Button effects',
             '',
             null,
             0,
@@ -236,7 +236,7 @@
         settings.enableButtonSound = new UserSetting(
             'enableButtonSound',
             true,
-            'Enable button audio',
+            'Button sounds',
             '',
             null,
             0,
@@ -246,7 +246,7 @@
         settings.buttonSoundVolume = new UserSetting(
             'buttonSoundVolume',
             0.7,
-            'Button audio volume',
+            'Button sound volume',
             '',
             null,
             0,
@@ -256,8 +256,8 @@
         settings.buttonSoundDelay = new UserSetting(
             'buttonSoundDelay',
             -1,
-            'Button audio delay',
-            'The delay in milliseconds before the site redirects after a button starts playing a sound. Use -1 to automatically detect the delay. To disable the delay, enter a large negative number.',
+            'Button sound delay',
+            'Set delay before redirect after sound plays. -1 for auto-detect, large negative to disable.',
             null,
             -99999,
             99999,
@@ -266,14 +266,14 @@
         settings.enableReplaceKanjiStrokeOrder = new UserSetting(
             'enableReplaceKanjiStrokeOrder',
             true,
-            'Enable replace kanji stroke order',
-            'Replaces the stroke order with KanjiVG.'
+            'KanjiVG stroke order',
+            ''
         );
         settings.useFontInsteadOfSvg = new UserSetting(
             'useFontInsteadOfSvg',
             false,
-            'Use font instead of SVG',
-            'Use a font for the stroke order instead of an SVG.',
+            'Font-based stroke order',
+            'Use font instead of SVG for stroke order.',
             null,
             0,
             1,
@@ -282,29 +282,30 @@
         settings.enableSentenceBlur = new UserSetting(
             'enableSentenceBlur',
             true,
-            'Blur sentence translation on the back of the card. Can be clicked to toggle blur.'
+            'Blur translations',
+            'Blur sentence translations on card back. Click to toggle.'
         );
         settings.enableVerticalSentence = new UserSetting(
             'enableVerticalSentence',
             false,
-            'Display sentence vertically on the review card'
+            'Vertical sentences on review cards'
         );
         settings.searchBarOverlayTransition = new UserSetting(
             'searchBarOverlayTransition',
             false,
-            'Enable transition effect for the search overlay'
+            'Search overlay animation'
         );
         settings.alwaysShowKanjiGrid = new UserSetting('alwaysShowKanjiGrid', true, 'Always show kanji grid');
         settings.enableMonolingualMachineTranslation = new UserSetting(
             'enableMonolingualMachineTranslation',
             true,
-            'Enable machine translation for monolingual sentences',
+            'Machine translation for monolingual sentences',
             'Shows a placeholder sentence that can be clicked to translate the sentence using JPDBs machine translation.'
         );
         settings.translationLanguage = new UserSetting(
             'translation',
             'None',
-            'Enable partial translation',
+            'Partial translation',
             null,
             Object.keys(TRANSLATIONS)
         );
