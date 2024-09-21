@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.136
+// @version 0.1.137
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -27,7 +27,16 @@
     // });
 
     class UserSetting {
-        constructor(name, defaultValue, shortDescription, longDescription = '', possibleValues = null, minVal = 1, maxVal = 99999, dependency = null) {
+        constructor(
+            name,
+            defaultValue,
+            shortDescription,
+            longDescription = '',
+            possibleValues = null,
+            minVal = 1,
+            maxVal = 99999,
+            dependency = null
+        ) {
             this.name = name;
             this.defaultValue = defaultValue;
             this.shortDescription = shortDescription;
@@ -275,8 +284,16 @@
             true,
             'Blur sentence translation on the back of the card. Can be clicked to toggle blur.'
         );
-        settings.enableVerticalSentence = new UserSetting('enableVerticalSentence', false, 'Display sentence vertically on the review card');
-        settings.searchBarOverlayTransition = new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay');
+        settings.enableVerticalSentence = new UserSetting(
+            'enableVerticalSentence',
+            false,
+            'Display sentence vertically on the review card'
+        );
+        settings.searchBarOverlayTransition = new UserSetting(
+            'searchBarOverlayTransition',
+            false,
+            'Enable transition effect for the search overlay'
+        );
         settings.alwaysShowKanjiGrid = new UserSetting('alwaysShowKanjiGrid', true, 'Always show kanji grid');
         settings.enableMonolingualMachineTranslation = new UserSetting(
             'enableMonolingualMachineTranslation',
@@ -284,10 +301,19 @@
             'Enable machine translation for monolingual sentences',
             'Shows a placeholder sentence that can be clicked to translate the sentence using JPDBs machine translation.'
         );
-        settings.translationLanguage = new UserSetting('translation', 'None', 'Enable partial translation', null, Object.keys(TRANSLATIONS));
+        settings.translationLanguage = new UserSetting(
+            'translation',
+            'None',
+            'Enable partial translation',
+            null,
+            Object.keys(TRANSLATIONS)
+        );
 
         settings.showAdvancedSettings = new UserSetting('showAdvancedSettings', false, 'Show advanced settings');
-        settings.advancedBodyFontFamily = new UserSetting('advancedBodyFontFamily', "'Manrope', 'Nunito Sans', 'Extra Sans JP', 'Noto Sans Symbols2', 'Segoe UI', 'Noto Sans JP', 'Noto Sans CJK JP', 'Hiragino Sans GB', 'Meiryo', sans-serif", 'Body font family',
+        settings.advancedBodyFontFamily = new UserSetting(
+            'advancedBodyFontFamily',
+            "'Manrope', 'Nunito Sans', 'Extra Sans JP', 'Noto Sans Symbols2', 'Segoe UI', 'Noto Sans JP', 'Noto Sans CJK JP', 'Hiragino Sans GB', 'Meiryo', sans-serif",
+            'Body font family',
             '',
             null,
             0,
@@ -2280,12 +2306,12 @@
                     const dependentElement = settingsForm.querySelector(`[name="${setting.getName()}"]`);
                     const dependencyElement = settingsForm.querySelector(`[name="${dependency.getName()}"]`);
 
-                    if ((!dependentElement || !dependencyElement) || dependencyElement.dataset.dependent) {
+                    if (!dependentElement || !dependencyElement || dependencyElement.dataset.dependent) {
                         continue;
                     }
 
                     // find all elements that depend on the dependencyElement
-                    const dependentSettings = []
+                    const dependentSettings = [];
                     for (const setting of Object.values(USER_SETTINGS)) {
                         const subDependency = setting.getDependency();
                         if (!subDependency) {
@@ -3113,8 +3139,12 @@
                 data = data.replace(/,(\s*[}\]])/g, '$1');
                 const dataObj = JSON.parse(data);
                 // filter where "label" has "old" and "failed" in it (case insensitive)
-                const oldCardsFailed = dataObj['datasets'].find((dataset) => dataset['label'].toLowerCase().includes('old') && dataset['label'].toLowerCase().includes('failed'));
-                const oldCardsPassed = dataObj['datasets'].find((dataset) => dataset['label'].toLowerCase().includes('old') && dataset['label'].toLowerCase().includes('passed'));
+                const oldCardsFailed = dataObj['datasets'].find(
+                    (dataset) => dataset['label'].toLowerCase().includes('old') && dataset['label'].toLowerCase().includes('failed')
+                );
+                const oldCardsPassed = dataObj['datasets'].find(
+                    (dataset) => dataset['label'].toLowerCase().includes('old') && dataset['label'].toLowerCase().includes('passed')
+                );
                 const newCards = dataObj['datasets'].find((dataset) => dataset['label'].toLowerCase().includes('new'));
 
                 const oldCardsCount =
