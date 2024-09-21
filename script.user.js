@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.134
+// @version 0.1.135
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -27,7 +27,7 @@
     // });
 
     class UserSetting {
-        constructor(name, defaultValue, shortDescription, longDescription = '', possibleValues = null, minVal = 1, maxVal = 99999) {
+        constructor(name, defaultValue, shortDescription, longDescription = '', possibleValues = null, minVal = 1, maxVal = 99999, dependency = null) {
             this.name = name;
             this.defaultValue = defaultValue;
             this.shortDescription = shortDescription;
@@ -35,6 +35,7 @@
             this.possibleValues = possibleValues;
             this.minVal = minVal;
             this.maxVal = maxVal;
+            this.dependency = dependency;
 
             // Initialize the value, ensuring it's within possible values if specified
             this.value = this.validateValue(GM_getValue(name, defaultValue));
@@ -58,6 +59,7 @@
             settingFunction.getPossibleValues = this.getPossibleValues.bind(this);
             settingFunction.getMinVal = this.getMinVal.bind(this);
             settingFunction.getMaxVal = this.getMaxVal.bind(this);
+            settingFunction.getDependency = this.getDependency.bind(this);
 
             // Return the function with added methods
             return settingFunction;
@@ -111,6 +113,10 @@
 
         getMaxVal() {
             return this.maxVal;
+        }
+
+        getDependency() {
+            return this.dependency;
         }
     }
 
@@ -200,71 +206,90 @@
         },
     };
 
-    const USER_SETTINGS = {
-        enableButtonStyling: new UserSetting(
+    const createUserSettings = () => {
+        const settings = {};
+        settings.enableButtonStyling = new UserSetting(
             'enableButtonStyling',
             true,
             'Enable button styling',
             'Adds styling to the buttons on the review page.'
-        ),
-        enableButtonEffects: new UserSetting(
+        );
+        settings.enableButtonEffects = new UserSetting(
             'enableButtonEffects',
             true,
             'Enable button effects',
-            'If button styling is  enabled, this will add a effect to the review buttons.'
-        ),
-        enableButtonSound: new UserSetting(
+            '',
+            null,
+            0,
+            1,
+            settings.enableButtonStyling
+        );
+        settings.enableButtonSound = new UserSetting(
             'enableButtonSound',
             true,
             'Enable button audio',
-            'If button styling is enabled, this will play a sound when a review button is clicked.'
-        ),
-        buttonSoundVolume: new UserSetting(
+            '',
+            null,
+            0,
+            1,
+            settings.enableButtonStyling
+        );
+        settings.buttonSoundVolume = new UserSetting(
             'buttonSoundVolume',
             0.7,
             'Button audio volume',
-            'If button audio is enabled, this will set the volume of the button sound.',
+            '',
             null,
             0,
-            1
-        ),
-        buttonSoundDelay: new UserSetting(
+            1,
+            settings.enableButtonSound
+        );
+        settings.buttonSoundDelay = new UserSetting(
             'buttonSoundDelay',
             -1,
             'Button audio delay',
-            'If button audio is enabled, the delay in milliseconds before the site redirects after a button starts playing a sound. Use -1 to automatically detect the delay. To disable the delay, enter a large negative number.',
+            'The delay in milliseconds before the site redirects after a button starts playing a sound. Use -1 to automatically detect the delay. To disable the delay, enter a large negative number.',
             null,
             -99999,
-            99999
-        ),
-        enableReplaceKanjiStrokeOrder: new UserSetting(
+            99999,
+            settings.enableButtonSound
+        );
+        settings.enableReplaceKanjiStrokeOrder = new UserSetting(
             'enableReplaceKanjiStrokeOrder',
             true,
             'Enable replace kanji stroke order',
             'Replaces the stroke order with KanjiVG.'
-        ),
-        useFontInsteadOfSvg: new UserSetting(
+        );
+        settings.useFontInsteadOfSvg = new UserSetting(
             'useFontInsteadOfSvg',
             false,
             'Use font instead of SVG',
-            'If the previous option is enabled, this will use a font for the stroke order instead of an SVG.'
-        ),
-        enableSentenceBlur: new UserSetting(
+            'Use a font for the stroke order instead of an SVG.',
+            null,
+            0,
+            1,
+            settings.enableReplaceKanjiStrokeOrder
+        );
+        settings.enableSentenceBlur = new UserSetting(
             'enableSentenceBlur',
             true,
             'Blur sentence translation on the back of the card. Can be clicked to toggle blur.'
-        ),
-        enableVerticalSentence: new UserSetting('enableVerticalSentence', false, 'Display sentence vertically on the review card'),
-        searchBarOverlayTransition: new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay'),
-        alwaysShowKanjiGrid: new UserSetting('alwaysShowKanjiGrid', true, 'Always show kanji grid'),
-        enableMonolingualMachineTranslation: new UserSetting(
+        );
+        settings.enableVerticalSentence = new UserSetting('enableVerticalSentence', false, 'Display sentence vertically on the review card');
+        settings.searchBarOverlayTransition = new UserSetting('searchBarOverlayTransition', false, 'Enable transition effect for the search overlay');
+        settings.alwaysShowKanjiGrid = new UserSetting('alwaysShowKanjiGrid', true, 'Always show kanji grid');
+        settings.enableMonolingualMachineTranslation = new UserSetting(
             'enableMonolingualMachineTranslation',
             true,
             'Enable machine translation for monolingual sentences',
             'Shows a placeholder sentence that can be clicked to translate the sentence using JPDBs machine translation.'
-        ),
-        translationLanguage: new UserSetting('translation', 'None', 'Enable partial translation', null, Object.keys(TRANSLATIONS)),
+        );
+        settings.translationLanguage = new UserSetting('translation', 'None', 'Enable partial translation', null, Object.keys(TRANSLATIONS));
+
+        return settings;
     };
+
+    const USER_SETTINGS = createUserSettings();
 
     const STYLES = {
         main: `
@@ -2112,10 +2137,22 @@
             if (submitButtonDiv) {
                 let sectionsHTML = '';
                 for (const setting of Object.values(USER_SETTINGS)) {
+                    let indent = 0;
+                    let dependency = setting.getDependency();
+                    let highestDependency = dependency;
+                    while (dependency !== null) {
+                        highestDependency = dependency;
+                        indent += 1.5;
+                        dependency = dependency.getDependency();
+                    }
+
+                    const extraIndent = `${indent}rem`;
+                    const hiddenClass = highestDependency !== null && !highestDependency() ? ' class="hidden"' : '';
+
                     // check if type is boolean
                     if (setting.getPossibleValues()) {
                         sectionsHTML += `
-                            <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 1rem;">
+                            <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 1rem; margin-left: ${extraIndent};"${hiddenClass}>
                                 <label style="margin-left: 2rem;" for="${setting.getName()}">${setting.getShortDescription()}</label>
                                 <select id="${setting.getName()}" name="${setting.getName()}" style="flex-grow: 0;flex-shrink: 1;width: auto;margin-left: 0.3rem; font-family: monospace;">
                                     ${setting
@@ -2130,6 +2167,7 @@
                         `;
                     } else if (typeof setting() === 'boolean') {
                         sectionsHTML += `
+                            <div style="margin-left: ${extraIndent};"${hiddenClass}>
                             <div class="checkbox">
                                 <input type="checkbox" id="${setting.getName()}" name="${setting.getName()}" ${setting() ? 'checked' : ''}>
                                 <label for="${setting.getName()}">${setting.getShortDescription()}</label>
@@ -2139,10 +2177,11 @@
                                     ? `<p style="margin-left: 2rem; opacity: 0.8;">\n${setting.getLongDescription()}\n</p>`
                                     : ''
                             }
+                            </div>
                         `;
                     } else if (typeof setting() === 'number') {
                         sectionsHTML += `
-                            <div>
+                            <div style="margin-left: ${extraIndent};"${hiddenClass}>
                                 <label for="${setting.getName()}">${setting.getShortDescription()}</label>
                                 <input style="max-width: 16rem;" type="number" id="${setting.getName()}" name="${setting.getName()}" step="any" value="${setting()}">
                                 ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
@@ -2150,7 +2189,7 @@
                         `;
                     } else {
                         sectionsHTML += `
-                            <div>
+                            <div style="margin-left: ${extraIndent};"${hiddenClass}>
                                 <label for="${setting.getName()}">${setting.getShortDescription()}</label>
                                 <input style="max-width: 16rem;" type="text" id="${setting.getName()}" name="${setting.getName()}" value="${setting()}">
                                 ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
@@ -2222,6 +2261,52 @@
                     p.textContent = 'Kanji cache reset.';
                     settingsForm.submit();
                 });
+
+                // add event listener to toggle hidden class
+                for (const setting of Object.values(USER_SETTINGS)) {
+                    const dependency = setting.getDependency();
+                    if (!dependency) {
+                        continue;
+                    }
+
+                    const dependentElement = settingsForm.querySelector(`[name="${setting.getName()}"]`);
+                    const dependencyElement = settingsForm.querySelector(`[name="${dependency.getName()}"]`);
+
+                    if ((!dependentElement || !dependencyElement) || dependencyElement.dataset.dependent) {
+                        continue;
+                    }
+
+                    // find all elements that depend on the dependencyElement
+                    const dependentSettings = []
+                    for (const setting of Object.values(USER_SETTINGS)) {
+                        const subDependency = setting.getDependency();
+                        if (!subDependency) {
+                            continue;
+                        }
+                        if (subDependency.getName() === dependency.getName()) {
+                            dependentSettings.push(setting);
+                        }
+                    }
+
+                    dependencyElement.addEventListener('change', function () {
+                        console.log(`Event triggered on ${dependencyElement.name}`);
+                        for (const dependentSetting of dependentSettings) {
+                            const dependentElement = settingsForm.querySelector(`[name="${dependentSetting.getName()}"]`);
+                            if (dependentElement.type === 'checkbox') {
+                                dependentElement.parentElement.parentElement.classList.toggle('hidden');
+                            } else {
+                                dependentElement.parentElement.classList.toggle('hidden');
+                            }
+                            console.log(`Toggled hidden class on ${dependentElement.name}`);
+
+                            // trigger change event
+                            dependentElement.dispatchEvent(new Event('change'));
+                        }
+                    });
+
+                    // set value to prevent attaching event listener multiple times
+                    dependencyElement.dataset.dependent = 'true';
+                }
 
                 // Add event listener to the form submission
                 settingsForm.addEventListener('submit', function (e) {
