@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.140
+// @version 0.1.141
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -2189,7 +2189,7 @@
                     if (setting.getPossibleValues()) {
                         sectionsHTML += `
                             <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 1rem; margin-left: ${extraIndent};"${hiddenClass}>
-                                <label style="margin-left: 2rem;" for="${setting.getName()}">${setting.getShortDescription()}</label>
+                                <label for="${setting.getName()}">${setting.getShortDescription()}</label>
                                 <select id="${setting.getName()}" name="${setting.getName()}" style="flex-grow: 0;flex-shrink: 1;width: auto;margin-left: 0.3rem; font-family: monospace;">
                                     ${setting
                                         .getPossibleValues()
