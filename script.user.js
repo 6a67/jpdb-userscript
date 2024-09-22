@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.141
+// @version 0.1.142
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -270,12 +270,7 @@
             99999,
             settings.enableButtonSound
         );
-        settings.enableReplaceKanjiStrokeOrder = new UserSetting(
-            'enableReplaceKanjiStrokeOrder',
-            true,
-            'KanjiVG stroke order',
-            ''
-        );
+        settings.enableReplaceKanjiStrokeOrder = new UserSetting('enableReplaceKanjiStrokeOrder', true, 'KanjiVG stroke order', '');
         settings.useFontInsteadOfSvg = new UserSetting(
             'useFontInsteadOfSvg',
             false,
@@ -292,16 +287,8 @@
             'Blur translations',
             'Blur sentence translations on card back. Click to toggle.'
         );
-        settings.enableVerticalSentence = new UserSetting(
-            'enableVerticalSentence',
-            false,
-            'Vertical sentences on review cards'
-        );
-        settings.searchBarOverlayTransition = new UserSetting(
-            'searchBarOverlayTransition',
-            false,
-            'Search overlay animation'
-        );
+        settings.enableVerticalSentence = new UserSetting('enableVerticalSentence', false, 'Vertical sentences on review cards');
+        settings.searchBarOverlayTransition = new UserSetting('searchBarOverlayTransition', false, 'Search overlay animation');
         settings.alwaysShowKanjiGrid = new UserSetting('alwaysShowKanjiGrid', true, 'Always show kanji grid');
         settings.enableMonolingualMachineTranslation = new UserSetting(
             'enableMonolingualMachineTranslation',
@@ -309,16 +296,20 @@
             'Machine translation for monolingual sentences',
             'Shows a placeholder sentence that can be clicked to translate the sentence using JPDBs machine translation.'
         );
-        settings.translationLanguage = new UserSetting(
-            'translation',
-            'None',
-            'Partial translation',
-            null,
-            Object.keys(TRANSLATIONS)
-        );
+        settings.translationLanguage = new UserSetting('translation', 'None', 'Partial translation', null, Object.keys(TRANSLATIONS));
 
         settings.showAdvancedSettings = new UserSetting('showAdvancedSettings', false, 'Show advanced settings');
-        settings.advancedCustomCSS = new UserSetting('advancedCustomCSS', '', 'Custom CSS', '', null, 0, 0, settings.showAdvancedSettings, true);
+        settings.advancedCustomCSS = new UserSetting(
+            'advancedCustomCSS',
+            '',
+            'Custom CSS',
+            '',
+            null,
+            0,
+            0,
+            settings.showAdvancedSettings,
+            true
+        );
 
         return settings;
     };
@@ -1062,7 +1053,7 @@
 
     function applyStyles() {
         GM_addStyle(STYLES.main);
-        if(USER_SETTINGS.advancedCustomCSS()) {
+        if (USER_SETTINGS.advancedCustomCSS()) {
             GM_addStyle(USER_SETTINGS.advancedCustomCSS());
         }
         if (USER_SETTINGS.enableButtonStyling()) {
@@ -2356,7 +2347,9 @@
 
                     // Update USER_SETTINGS based on the values
                     for (const setting of Object.values(USER_SETTINGS)) {
-                        const input = settingsForm.querySelector(`input[name="${setting.getName()}"]`) || settingsForm.querySelector(`textarea[name="${setting.getName()}"]`);
+                        const input =
+                            settingsForm.querySelector(`input[name="${setting.getName()}"]`) ||
+                            settingsForm.querySelector(`textarea[name="${setting.getName()}"]`);
                         const select = settingsForm.querySelector(`select[name="${setting.getName()}"]`);
                         if (input) {
                             if (typeof setting() === 'boolean') {
