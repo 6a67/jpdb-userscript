@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.138
+// @version 0.1.139
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -311,16 +311,6 @@
         );
 
         settings.showAdvancedSettings = new UserSetting('showAdvancedSettings', false, 'Show advanced settings');
-        settings.advancedBodyFontFamily = new UserSetting(
-            'advancedBodyFontFamily',
-            "'Manrope', 'Nunito Sans', 'Extra Sans JP', 'Noto Sans Symbols2', 'Segoe UI', 'Noto Sans JP', 'Noto Sans CJK JP', 'Hiragino Sans GB', 'Meiryo', sans-serif",
-            'Body font family',
-            '',
-            null,
-            0,
-            0,
-            settings.showAdvancedSettings
-        );
 
         return settings;
     };
@@ -413,7 +403,7 @@
             
             body,
             input {
-                font-family: ${USER_SETTINGS.advancedBodyFontFamily()};
+                font-family: 'Manrope', 'Nunito Sans', 'Extra Sans JP', 'Noto Sans Symbols2', 'Segoe UI', 'Noto Sans JP', 'Noto Sans CJK JP', 'Hiragino Sans GB', 'Meiryo', sans-serif;
             }
             
             input[type='button'],
