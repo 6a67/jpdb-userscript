@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.139
+// @version 0.1.140
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -35,7 +35,8 @@
             possibleValues = null,
             minVal = 1,
             maxVal = 99999,
-            dependency = null
+            dependency = null,
+            largeTextField = false
         ) {
             this.name = name;
             this.defaultValue = defaultValue;
@@ -45,6 +46,7 @@
             this.minVal = minVal;
             this.maxVal = maxVal;
             this.dependency = dependency;
+            this.largeTextField = largeTextField;
 
             // Initialize the value, ensuring it's within possible values if specified
             this.value = this.validateValue(GM_getValue(name, defaultValue));
@@ -69,6 +71,7 @@
             settingFunction.getMinVal = this.getMinVal.bind(this);
             settingFunction.getMaxVal = this.getMaxVal.bind(this);
             settingFunction.getDependency = this.getDependency.bind(this);
+            settingFunction.getLargeTextField = this.getLargeTextField.bind(this);
 
             // Return the function with added methods
             return settingFunction;
@@ -126,6 +129,10 @@
 
         getDependency() {
             return this.dependency;
+        }
+
+        getLargeTextField() {
+            return this.largeTextField;
         }
     }
 
@@ -311,6 +318,7 @@
         );
 
         settings.showAdvancedSettings = new UserSetting('showAdvancedSettings', false, 'Show advanced settings');
+        settings.advancedCustomCSS = new UserSetting('advancedCustomCSS', '', 'Custom CSS', '', null, 0, 0, settings.showAdvancedSettings, true);
 
         return settings;
     };
@@ -1054,6 +1062,9 @@
 
     function applyStyles() {
         GM_addStyle(STYLES.main);
+        if(USER_SETTINGS.advancedCustomCSS()) {
+            GM_addStyle(USER_SETTINGS.advancedCustomCSS());
+        }
         if (USER_SETTINGS.enableButtonStyling()) {
             GM_addStyle(STYLES.button);
         }
@@ -2212,6 +2223,14 @@
                                 ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
                             </div>
                         `;
+                    } else if (setting.getLargeTextField()) {
+                        sectionsHTML += `
+                            <div style="margin-left: ${extraIndent};"${hiddenClass}>
+                                <label for="${setting.getName()}">${setting.getShortDescription()}</label>
+                                <textarea id="${setting.getName()}" name="${setting.getName()}" style="width: 100%; height: 10rem; margin-top: 0.5rem;" spellcheck="false">${setting()}</textarea>
+                                ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
+                            </div>
+                        `;
                     } else {
                         sectionsHTML += `
                             <div style="margin-left: ${extraIndent};"${hiddenClass}>
@@ -2337,7 +2356,7 @@
 
                     // Update USER_SETTINGS based on the values
                     for (const setting of Object.values(USER_SETTINGS)) {
-                        const input = settingsForm.querySelector(`input[name="${setting.getName()}"]`);
+                        const input = settingsForm.querySelector(`input[name="${setting.getName()}"]`) || settingsForm.querySelector(`textarea[name="${setting.getName()}"]`);
                         const select = settingsForm.querySelector(`select[name="${setting.getName()}"]`);
                         if (input) {
                             if (typeof setting() === 'boolean') {
