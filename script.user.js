@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.142
+// @version 0.1.143
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -1160,7 +1160,7 @@
         }
 
         if (soundUrl) {
-            const audioBlob = await httpRequest(soundUrl, 30 * 24 * 60 * 60, false, true, true, true, 'blob');
+            const audioBlob = await httpRequest(soundUrl, 365 * 24 * 60 * 60, false, true, true, true, 'blob');
             const audioUrl = URL.createObjectURL(audioBlob.response);
             const audio = new Audio(audioUrl);
             audio.volume = USER_SETTINGS.buttonSoundVolume();
@@ -1343,7 +1343,7 @@
 
             // const html = document.querySelector('html');
             // const backgroundFirework =  CONFIG.lottieSmallFireworks[1];
-            // const backgroundFireworkJson = await JSON.parse((await httpRequest(backgroundFirework, 30 * 24 * 60 * 60, true)).responseText);
+            // const backgroundFireworkJson = await JSON.parse((await httpRequest(backgroundFirework, 365 * 24 * 60 * 60, true)).responseText);
             // for (let i = 0; i < 2; i++) {
             //     playLottieAnimation(html, backgroundFireworkJson, { loop: false, autoplay: true, renderer: 'svg', rotation: Math.random() * 360, opacity: 0.025});
             // }
@@ -1425,7 +1425,7 @@
                             const smallFirework = CONFIG.lottieSmallFireworks[0];
                             const smallFireworkJson = await JSON.parse(
                                 (
-                                    await httpRequest(smallFirework, 30 * 24 * 60 * 60, true, false, true)
+                                    await httpRequest(smallFirework, 365 * 24 * 60 * 60, true, false, true)
                                 ).responseText
                             );
                             WARM['smallFireworkAnimation'] = loadLottieAnimation(smallFireworkJson);
@@ -1435,7 +1435,7 @@
                             const bigFirework = CONFIG.lottieBigFireworks[0];
                             const bigFireworkJson = await JSON.parse(
                                 (
-                                    await httpRequest(bigFirework, 30 * 24 * 60 * 60, true, false, true)
+                                    await httpRequest(bigFirework, 365 * 24 * 60 * 60, true, false, true)
                                 ).responseText
                             );
                             WARM['bigFireworkAnimation'] = loadLottieAnimation(bigFireworkJson);
@@ -1445,7 +1445,7 @@
                             const randomSparkle = CONFIG.lottieSparkles[0];
                             const sparkleJson = await JSON.parse(
                                 (
-                                    await httpRequest(randomSparkle, 30 * 24 * 60 * 60, true, false, true)
+                                    await httpRequest(randomSparkle, 365 * 24 * 60 * 60, true, false, true)
                                 ).responseText
                             );
                             WARM['sparkleAnimation'] = loadLottieAnimation(sparkleJson);
@@ -1455,7 +1455,7 @@
                             const explosion = CONFIG.lottieExplosions[0];
                             const explosionJson = await JSON.parse(
                                 (
-                                    await httpRequest(explosion, 30 * 24 * 60 * 60, true, false, true)
+                                    await httpRequest(explosion, 365 * 24 * 60 * 60, true, false, true)
                                 ).responseText
                             );
                             WARM['explosionAnimation'] = loadLottieAnimation(explosionJson);
@@ -1494,7 +1494,7 @@
                                 async function playRevealSound() {
                                     const audio = await httpRequest(
                                         CONFIG.soundUrlReveal,
-                                        30 * 24 * 60 * 60,
+                                        365 * 24 * 60 * 60,
                                         false,
                                         true,
                                         true,
@@ -1612,7 +1612,7 @@
         const originalClass = kanjiSvg.getAttribute('class');
 
         try {
-            const svgContent = (await httpRequest(strokeOrderUrl, 30 * 24 * 60 * 60, true, true, true)).responseText;
+            const svgContent = (await httpRequest(strokeOrderUrl, 365 * 24 * 60 * 60, true, true, true)).responseText;
             replaceSvgWithCached(svgContent);
         } catch (error) {
             console.error('Error fetching kanji stroke order for kanji:', kanjiChar, error);
@@ -1712,7 +1712,7 @@
         while (fileUrls.length > 0) {
             const urls = fileUrls.splice(0, 50);
             const batchPromises = urls.map((url) =>
-                httpRequest(url, 30 * 24 * 60 * 60, false, false, true).then(() => {
+                httpRequest(url, 365 * 24 * 60 * 60, false, false, true).then(() => {
                     count++;
                     progress.style.width = `${(count / total) * 100}%`;
                     progressText.textContent = `${count}/${total} (${((count / total) * 100).toFixed(2)}%)`;
@@ -1783,7 +1783,7 @@
             const effectUrls = [].concat(CONFIG.lottieSparkles, CONFIG.lottieSmallFireworks, CONFIG.lottieBigFireworks);
             console.log('Caching review button effects:', effectUrls);
             for (const effectUrl of effectUrls) {
-                await httpRequest(effectUrl, 30 * 24 * 60 * 60, true, false, true);
+                await httpRequest(effectUrl, 365 * 24 * 60 * 60, true, false, true);
             }
             STATE.cachedEffects = true;
             GM_setValue('cachedEffects', true);
