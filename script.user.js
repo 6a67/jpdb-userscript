@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.143
+// @version 0.1.144
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -26,6 +26,7 @@
     //     document.body.style.display = '';
     // });
 
+    // TODO: Unify the way the input method is set and not just use a number of booleans that are checked one after another to determine the input method
     class UserSetting {
         constructor(
             name,
@@ -36,7 +37,8 @@
             minVal = 1,
             maxVal = 99999,
             dependency = null,
-            largeTextField = false
+            largeTextField = false,
+            colorPicker = false
         ) {
             this.name = name;
             this.defaultValue = defaultValue;
@@ -47,6 +49,7 @@
             this.maxVal = maxVal;
             this.dependency = dependency;
             this.largeTextField = largeTextField;
+            this.colorPicker = colorPicker;
 
             // Initialize the value, ensuring it's within possible values if specified
             this.value = this.validateValue(GM_getValue(name, defaultValue));
@@ -72,6 +75,7 @@
             settingFunction.getMaxVal = this.getMaxVal.bind(this);
             settingFunction.getDependency = this.getDependency.bind(this);
             settingFunction.getLargeTextField = this.getLargeTextField.bind(this);
+            settingFunction.getColorPicker = this.getColorPicker.bind(this);
 
             // Return the function with added methods
             return settingFunction;
@@ -133,6 +137,10 @@
 
         getLargeTextField() {
             return this.largeTextField;
+        }
+
+        getColorPicker() {
+            return this.colorPicker;
         }
     }
 
@@ -299,6 +307,40 @@
         settings.translationLanguage = new UserSetting('translation', 'None', 'Partial translation', null, Object.keys(TRANSLATIONS));
 
         settings.showAdvancedSettings = new UserSetting('showAdvancedSettings', false, 'Show advanced settings');
+        settings.advancedUseExperimentalThemeGenerator = new UserSetting(
+            'advancedUseExperimentalThemeGenerator',
+            false,
+            'Use experimental theme generator',
+            '',
+            null,
+            0,
+            1,
+            settings.showAdvancedSettings
+        );
+        settings.advancedDarkModeBackgroundColor = new UserSetting(
+            'advancedDarkModeBackgroundColor',
+            '#151f24',
+            'Dark mode background color',
+            '',
+            null,
+            0,
+            0,
+            settings.advancedUseExperimentalThemeGenerator,
+            false,
+            true
+        );
+        settings.advancedDarkModeContrastColor = new UserSetting(
+            'advancedDarkModeContrastColor',
+            '#00ffaa',
+            'Dark mode contrast color',
+            '',
+            null,
+            0,
+            0,
+            settings.advancedUseExperimentalThemeGenerator,
+            false,
+            true
+        );
         settings.advancedCustomCSS = new UserSetting(
             'advancedCustomCSS',
             '',
@@ -316,17 +358,9 @@
 
     const USER_SETTINGS = createUserSettings();
 
-    const STYLES = {
-        main: `
-            :root {
-                /* Original button colors */
-                --outline-v1-color: #ff2929;
-                --outline-v3-color: #d98c00;
-                --outline-v4-color: #0ccf0c;
-                --easy-button-color: #4b8dff;
-            }
-
-            .dark-mode {
+    function getDarkThemeColors() {
+        if (!USER_SETTINGS.advancedUseExperimentalThemeGenerator()) {
+            return `
                 --text-color: #ddd;
                 --background-color: #151f24;
                 --deeper-background-color: #0d1518;
@@ -378,6 +412,155 @@
                 --state-known: #4fa825;
                 --state-overdue: #ff8c42;
                 --state-failed: #ff3b3b;
+                `;
+        }
+
+        function adjustColor(color, amount) {
+            return (
+                '#' +
+                color
+                    .replace(/^#/, '')
+                    .replace(/../g, (color) => ('0' + Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2))
+            );
+        }
+
+        function mixColors(color1, color2, weight) {
+            const d2h = (d) => d.toString(16).padStart(2, '0');
+            const h2d = (h) => parseInt(h, 16);
+
+            let color = '#';
+            for (let i = 1; i <= 5; i += 2) {
+                const v1 = h2d(color1.substr(i, 2));
+                const v2 = h2d(color2.substr(i, 2));
+                color += d2h(Math.round(v2 + (v1 - v2) * weight));
+            }
+            return color;
+        }
+
+        const invertColor = (hex) => '#' + (0xffffff ^ parseInt(hex.slice(1), 16)).toString(16).padStart(6, '0').toUpperCase();
+
+        const isMoreWhite = (hex) => {
+            const c = hex.replace('#', '');
+            const rgb =
+                c.length === 3
+                    ? c
+                          .split('')
+                          .map((h) => h + h)
+                          .join('')
+                    : c;
+            const [r, g, b] = [0, 2, 4].map((i) => parseInt(rgb.slice(i, i + 2), 16));
+            return 0.299 * r + 0.587 * g + 0.114 * b > 128;
+        };
+
+        function generateColorScheme(backgroundColor, contrastColor) {
+            const textColor = mixColors(invertColor(backgroundColor), contrastColor, 0.8);
+            const backgroundIsMoreWhite = isMoreWhite(backgroundColor);
+
+            return {
+                textColor: textColor,
+                textStrongColor: mixColors(textColor, backgroundIsMoreWhite ? '#000000' : '#ffffff', 0.2),
+                backgroundColor: backgroundColor,
+                deeperBackgroundColor: adjustColor(backgroundColor, -10),
+                foregroundBackgroundColor: adjustColor(backgroundColor, 20),
+                linkColor: contrastColor,
+                highlightColor: mixColors(backgroundColor, contrastColor, 0.8),
+                buttonBackgroundColor: mixColors(backgroundColor, contrastColor, 0.8),
+                inputBackgroundColor: adjustColor(backgroundColor, 10),
+                inputBorderColor: adjustColor(backgroundColor, 40),
+                scrollbarColor: contrastColor,
+                mnemonicMain: adjustColor(contrastColor, -20),
+                mnemonicComponent: mixColors(backgroundColor, contrastColor, 0.9),
+                // progressBarForeground: `linear-gradient(${adjustColor(contrastColor, -20)}, ${adjustColor(contrastColor, -40)})`,
+                progressBarForeground: `linear-gradient(${mixColors(adjustColor(contrastColor, -40), textColor, 0.6)}, ${mixColors(
+                    adjustColor(contrastColor, -120),
+                    textColor,
+                    0.6
+                )})`,
+                focusedColor: mixColors(adjustColor(contrastColor, -40), textColor, 0.8),
+                whatIsThisColor: adjustColor(backgroundColor, 120),
+                subsectionLabelColor: adjustColor(backgroundColor, 150),
+                propertyTextColor: adjustColor(backgroundColor, 150),
+                stateNew: contrastColor,
+                stateBlacklisted: adjustColor(backgroundColor, 120),
+                stateKnown: '#4fa825',
+                stateOverdue: '#ff8c42',
+                stateFailed: '#ff3b3b',
+            };
+        }
+
+        const colorScheme = generateColorScheme(
+            USER_SETTINGS.advancedDarkModeBackgroundColor(),
+            USER_SETTINGS.advancedDarkModeContrastColor()
+        );
+
+        return `
+            --text-color: ${colorScheme.textColor};
+            --text-strong-color: ${colorScheme.textStrongColor};
+            --background-color: ${colorScheme.backgroundColor};
+            --deeper-background-color: ${colorScheme.deeperBackgroundColor};
+            --foreground-background-color: ${colorScheme.foregroundBackgroundColor};
+            --link-underline-color: ${colorScheme.linkColor};
+            --link-color: ${colorScheme.linkColor};
+            --highlight-color: ${colorScheme.highlightColor};
+            --checkbox-focused-border-color: ${colorScheme.focusedColor};
+            --checkbox-background-color: ${colorScheme.deeperBackgroundColor};
+            --checkbox-focused-box-shadow-color: ${colorScheme.focusedColor};
+            --button-background-color: ${colorScheme.buttonBackgroundColor};
+            --button-focused-border-color: ${colorScheme.focusedColor};
+            --outline-input-background-color-review: ${colorScheme.deeperBackgroundColor};
+            --outline-input-background-color: ${colorScheme.inputBackgroundColor};
+            --answer-box-color: ${colorScheme.foregroundBackgroundColor};
+            --table-border-color: ${colorScheme.inputBorderColor};
+            --spelling-box-background-color: ${colorScheme.highlightColor};
+            --input-border-color: ${colorScheme.inputBorderColor};
+            --input-background-color: ${colorScheme.inputBackgroundColor};
+            --input-box-shadow-color: ${colorScheme.deeperBackgroundColor};
+            --scrollbar-color: ${colorScheme.scrollbarColor};
+            --scrollbar-background-color: ${colorScheme.deeperBackgroundColor};
+            --mnemonic-main: ${colorScheme.mnemonicMain};
+            --mnemonic-component: ${colorScheme.mnemonicComponent};
+            --background-button-border-color: ${colorScheme.inputBorderColor};
+            --big-shadow-color: ${adjustColor(colorScheme.deeperBackgroundColor, -10)};
+            --progress-bar-background: ${colorScheme.foregroundBackgroundColor};
+            --progress-bar-foreground: ${colorScheme.progressBarForeground};
+            --progress-bar-in-progress: ${colorScheme.inputBorderColor};
+            --review-button-group-border: ${colorScheme.inputBorderColor};
+
+            --focused-arrow-color: ${colorScheme.focusedColor};
+            --what-is-this-color: ${colorScheme.whatIsThisColor};
+            --what-is-this-focus-color: ${colorScheme.focusedColor};
+            --what-is-this-focus-shadow-color: ${colorScheme.highlightColor};
+            --checkbox-color: ${colorScheme.focusedColor};
+            --checkbox-focused-text-underline-color: ${colorScheme.focusedColor};
+            --button-hover-border-color: ${colorScheme.focusedColor};
+            --outline-input-color: ${colorScheme.focusedColor};
+
+            --outline-input-shadow-color: ${colorScheme.focusedColor};
+            --subsection-label-color: ${colorScheme.subsectionLabelColor};
+            --table-header-color: ${colorScheme.subsectionLabelColor};
+            --input-focused-border-color: ${colorScheme.focusedColor};
+
+            --property-text-color: ${colorScheme.propertyTextColor};
+            --state-new: ${colorScheme.stateNew};
+            --state-blacklisted: ${colorScheme.stateBlacklisted};
+            --state-known: ${colorScheme.stateKnown};
+            --state-overdue: ${colorScheme.stateOverdue};
+            --state-failed: ${colorScheme.stateFailed};
+            `;
+    }
+
+    const STYLES = {
+        main: `
+            :root {
+                /* Original button colors */
+                --outline-v1-color: #ff2929;
+                --outline-v3-color: #d98c00;
+                --outline-v4-color: #0ccf0c;
+                --easy-button-color: #4b8dff;
+            }
+
+            .dark-mode {
+                ${getDarkThemeColors()}    
 
                 /* Custom button colors */
                 --outline-v1-color: #d42728;
@@ -2174,7 +2357,14 @@
                     }
 
                     const extraIndent = `${indent}rem`;
-                    const hiddenClass = highestDependency !== null && !highestDependency() ? ' class="hidden"' : '';
+                    const shouldBeHidden = (() => {
+                        if (highestDependency === null) return false;
+                        if (!highestDependency()) return true;
+                        if (highestDependency() !== setting.getDependency()()) return true;
+                        return false;
+                    })();
+
+                    const hiddenClass = shouldBeHidden ? ' class="hidden"' : '';
 
                     // check if type is boolean
                     if (setting.getPossibleValues()) {
@@ -2219,6 +2409,14 @@
                             <div style="margin-left: ${extraIndent};"${hiddenClass}>
                                 <label for="${setting.getName()}">${setting.getShortDescription()}</label>
                                 <textarea id="${setting.getName()}" name="${setting.getName()}" style="width: 100%; height: 10rem; margin-top: 0.5rem;" spellcheck="false">${setting()}</textarea>
+                                ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
+                            </div>
+                        `;
+                    } else if (setting.getColorPicker()) {
+                        sectionsHTML += `
+                            <div style="margin-left: ${extraIndent};"${hiddenClass}>
+                                <label for="${setting.getName()}">${setting.getShortDescription()}</label>
+                                <input type="color" id="${setting.getName()}" name="${setting.getName()}" value="${setting()}" style="appearance: none; border: none; background: none;">
                                 ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
                             </div>
                         `;
