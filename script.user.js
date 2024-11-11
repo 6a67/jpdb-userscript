@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.145
+// @version 0.1.146
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -298,6 +298,7 @@
         settings.enableVerticalSentence = new UserSetting('enableVerticalSentence', false, 'Vertical sentences on review cards');
         settings.searchBarOverlayTransition = new UserSetting('searchBarOverlayTransition', false, 'Search overlay animation');
         settings.alwaysShowKanjiGrid = new UserSetting('alwaysShowKanjiGrid', true, 'Always show kanji grid');
+        settings.autoExpandNavMenu = new UserSetting('autoExpandNavMenu', false, 'Auto-expand the navigation menu on review page');
         settings.enableMonolingualMachineTranslation = new UserSetting(
             'enableMonolingualMachineTranslation',
             true,
@@ -3433,6 +3434,33 @@
         observer.observe(document.body, { childList: true, subtree: true });
     }
 
+    function autoExpandMenuOnReviewPage() {
+        const checkbox = document.getElementById('menu-btn');
+        const menu = document.querySelector('.menu');
+
+        // Inject CSS to disable transitions
+        const style = document.createElement('style');
+        style.textContent = `
+            .nav .menu-icon .navicon:before,
+            .nav .menu-icon .navicon:after,
+            .nav .menu-icon .navicon,
+            .nav .menu
+            {
+                transition: none !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Toggle checkbox
+        checkbox.checked = true;
+
+        // Force reflow
+        menu.offsetHeight;
+
+        // Remove injected CSS
+        document.head.removeChild(style);
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -3469,6 +3497,10 @@
 
         if (USER_SETTINGS.translationLanguage() !== 'None') {
             initTranslation();
+        }
+
+        if (USER_SETTINGS.autoExpandNavMenu() && window.location.href.startsWith(CONFIG.reviewPageUrlPrefix)) {
+            autoExpandMenuOnReviewPage();
         }
 
         initKanjiCopyButton();
