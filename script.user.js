@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.147
+// @version 0.1.148
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -152,8 +152,8 @@
         audioContext: {
             ctx: null,
             src: null,
-            gain: null,
-        },
+            gain: null
+        }
     };
 
     let WARM = {};
@@ -189,16 +189,16 @@
         // lottieWebScript: 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js',
         lottieSparkles: [
             'https://d35aaqx5ub95lt.cloudfront.net/lottie/e13df96082d0e4dbc6d78b6f5346e2a2.json',
-            'https://d35aaqx5ub95lt.cloudfront.net/lottie/b50a27f803ddd071fdbd83af2fc05c8a.json',
+            'https://d35aaqx5ub95lt.cloudfront.net/lottie/b50a27f803ddd071fdbd83af2fc05c8a.json'
         ],
         lottieSmallFireworks: ['https://files.catbox.moe/1ggh8q.json', 'https://files.catbox.moe/5t0xm4.json'],
         lottieBigFireworks: ['https://files.catbox.moe/cb35i9.json'],
-        lottieExplosions: ['https://d35aaqx5ub95lt.cloudfront.net/lottie/2a62162ea93d55dee67189cc47bd98ab.json'],
+        lottieExplosions: ['https://d35aaqx5ub95lt.cloudfront.net/lottie/2a62162ea93d55dee67189cc47bd98ab.json']
     };
 
     const DEBUG = {
         enableCacheLogs: false,
-        enableProgress: GM_getValue('progress_enableProgress', false),
+        enableProgress: GM_getValue('progress_enableProgress', false)
     };
 
     const TRANSLATIONS = {
@@ -231,8 +231,8 @@
             'Quiz': 'クイズ',
             'Leaderboard': 'リーダーボード',
             'Meanings': '意味',
-            'config.reviewButtonFontWeight': '500',
-        },
+            'config.reviewButtonFontWeight': '500'
+        }
     };
 
     const createUserSettings = () => {
@@ -490,7 +490,7 @@
                 stateBlacklisted: adjustColor(backgroundColor, 120),
                 stateKnown: '#4fa825',
                 stateOverdue: '#ff8c42',
-                stateFailed: '#ff3b3b',
+                stateFailed: '#ff3b3b'
             };
         }
 
@@ -991,7 +991,7 @@
                 text-align: unset;
                 line-height: 2rem;
             }
-        `,
+        `
     };
 
     function log(...args) {
@@ -1121,7 +1121,7 @@
             }
             const cacheData = {
                 timestamp: Date.now(),
-                response: responseToCache,
+                response: responseToCache
             };
             const compressedCacheData = compressData(cacheData);
 
@@ -1157,7 +1157,7 @@
                         }
                         resolve(response);
                     },
-                    onerror: reject,
+                    onerror: reject
                 });
             });
         }
@@ -1401,7 +1401,7 @@
                 renderer: 'svg',
                 loop: false,
                 autoplay: false,
-                animationData: animationData,
+                animationData: animationData
             };
 
             return animationConfig;
@@ -1425,7 +1425,7 @@
             size: { width: 100, height: 100 },
             opacity: 1,
             playBehind: false,
-            rotation: 0,
+            rotation: 0
         };
 
         const animOptions = { ...defaultOptions, ...options };
@@ -1487,7 +1487,7 @@
                 ...loadedAnimation,
                 container: lottieContainer,
                 loop: animOptions.loop,
-                autoplay: animOptions.autoplay,
+                autoplay: animOptions.autoplay
             });
 
             anim.setSpeed(animOptions.speed);
@@ -1535,14 +1535,14 @@
                 autoplay: true,
                 renderer: 'svg',
                 size: { width: rect.height * 3, height: rect.height },
-                opacity: 0.5,
+                opacity: 0.5
             });
             playLottieAnimation(target, WARM['bigFireworkAnimation'], {
                 loop: false,
                 autoplay: true,
                 renderer: 'svg',
                 size: { width: rect.height * 3, height: rect.height },
-                opacity: 0.5,
+                opacity: 0.5
             });
 
             // const html = document.querySelector('html');
@@ -1607,7 +1607,7 @@
                 if (form) {
                     form.submit();
                 }
-            },
+            }
         };
 
         Object.entries(buttonEvents).forEach(([event, handler]) => {
@@ -1738,7 +1738,7 @@
                                 renderer: 'svg',
                                 speed: 1.5,
                                 size: { width: rect.width, height: rect.height },
-                                opacity: 0.5,
+                                opacity: 0.5
                             });
                             playLottieAnimation(target, WARM['bigFireworkAnimation'], {
                                 loop: false,
@@ -1746,7 +1746,7 @@
                                 renderer: 'svg',
                                 speed: 1.5,
                                 size: { width: rect.width, height: rect.height },
-                                opacity: 0.5,
+                                opacity: 0.5
                             });
                             return true;
                         }
@@ -2758,7 +2758,7 @@
             childList: true,
             subtree: true,
             attributes: true,
-            attributeFilter: ['placeholder', 'value', 'title', 'alt', 'aria-label'],
+            attributeFilter: ['placeholder', 'value', 'title', 'alt', 'aria-label']
         });
 
         // Run initial translation
@@ -2790,19 +2790,19 @@
                 );
                 return {
                     success: true,
-                    translation: translationResponse.responseText.trim(),
+                    translation: translationResponse.responseText.trim()
                 };
             } else {
                 if (translation) {
                     return {
                         success: true,
-                        translation: translation.textContent.trim(),
+                        translation: translation.textContent.trim()
                     };
                 }
 
                 return {
                     success: false,
-                    translation: '',
+                    translation: ''
                 };
             }
         }
@@ -3227,7 +3227,7 @@
                 this.locked = false;
                 const next = this.queue.shift();
                 if (next) next();
-            },
+            }
         };
 
         async function addDropdown() {
@@ -3391,12 +3391,12 @@
 
                 return {
                     oldCardsCount,
-                    newCardsCount,
+                    newCardsCount
                 };
             }
             return {
                 oldCardsCount: 0,
-                newCardsCount: 0,
+                newCardsCount: 0
             };
         }
 
