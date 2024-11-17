@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.146
+// @version 0.1.147
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -149,6 +149,7 @@
         cachedEffects: GM_getValue('cachedEffects', false),
         warmingEffectsPromise: null,
         revealEffectPlayed: false,
+        audioElement: null,
     };
 
     let WARM = {};
@@ -1345,24 +1346,24 @@
 
         if (soundUrl) {
             const audioBlob = await httpRequest(soundUrl, 365 * 24 * 60 * 60, false, true, true, true, 'blob');
-            const audioUrl = URL.createObjectURL(audioBlob.response);
-            const audio = new Audio(audioUrl);
-            audio.volume = USER_SETTINGS.buttonSoundVolume();
+            const blob = new Blob([audioBlob.response]);
+            const se = document.createElement('source');
+            se.src = window.URL.createObjectURL(blob);
+            if (STATE.audioElement) {
+                STATE.audioElement.pause();
+                STATE.audioElement = null;
+            }
+            STATE.audioElement = document.createElement('audio');
+            STATE.audioElement.volume = USER_SETTINGS.buttonSoundVolume();
+            STATE.audioElement.appendChild(se);
             await new Promise((resolve) => {
-                audio.onended = () => {
-                    URL.revokeObjectURL(audioUrl);
+                STATE.audioElement.onended = () => {
+                    window.URL.revokeObjectURL(se.src);
                     resolve();
                 };
-                audio.onloadedmetadata = () => {
-                    const duration = audio.duration;
-                    const timeToWait = Math.max(duration - 0.5, 0) * 1000;
-                    setTimeout(() => {
-                        URL.revokeObjectURL(audioUrl);
-                        resolve();
-                    }, timeToWait);
-                };
-                audio.play().catch(() => {
-                    URL.revokeObjectURL(audioUrl);
+                STATE.audioElement.play().catch((err) => {
+                    console.log(err);
+                    window.URL.revokeObjectURL(se.src);
                     resolve();
                 });
             });
@@ -1676,7 +1677,7 @@
                             // Play reveal audio effect
                             if (USER_SETTINGS.enableButtonSound()) {
                                 async function playRevealSound() {
-                                    const audio = await httpRequest(
+                                    const audioBlob = await httpRequest(
                                         CONFIG.soundUrlReveal,
                                         365 * 24 * 60 * 60,
                                         false,
@@ -1685,11 +1686,22 @@
                                         true,
                                         'blob'
                                     );
-                                    const audioUrl = URL.createObjectURL(audio.response);
-                                    const audioElement = new Audio(audioUrl);
-                                    audioElement.volume = USER_SETTINGS.buttonSoundVolume();
-                                    audioElement.play().catch((error) => {
-                                        console.error('Error playing reveal sound:', error);
+                                    const blob = new Blob([audioBlob.response], { type: 'audio/ogg' });
+                                    const se = document.createElement('source');
+                                    se.src = window.URL.createObjectURL(blob);
+                                    if (STATE.audioElement) {
+                                        STATE.audioElement.pause();
+                                        STATE.audioElement = null;
+                                    }
+                                    STATE.audioElement = document.createElement('audio');
+                                    STATE.audioElement.volume = USER_SETTINGS.buttonSoundVolume();
+                                    STATE.audioElement.appendChild(se);
+                                    STATE.audioElement.onended = function () {
+                                        window.URL.revokeObjectURL(se.src);
+                                    };
+                                    STATE.audioElement.play().catch((err) => {
+                                        console.log('Error playing reveal sound:', err);
+                                        window.URL.revokeObjectURL(se.src);
                                     });
                                 }
                                 playRevealSound();
