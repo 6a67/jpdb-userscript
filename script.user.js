@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.146
+// @version 0.1.147
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -149,6 +149,11 @@
         cachedEffects: GM_getValue('cachedEffects', false),
         warmingEffectsPromise: null,
         revealEffectPlayed: false,
+        audioContext: {
+            ctx: null,
+            src: null,
+            gain: null,
+        },
     };
 
     let WARM = {};
@@ -1345,26 +1350,41 @@
 
         if (soundUrl) {
             const audioBlob = await httpRequest(soundUrl, 365 * 24 * 60 * 60, false, true, true, true, 'blob');
-            const audioUrl = URL.createObjectURL(audioBlob.response);
-            const audio = new Audio(audioUrl);
-            audio.volume = USER_SETTINGS.buttonSoundVolume();
+            const aBuffer = await audioBlob.response.arrayBuffer();
+
             await new Promise((resolve) => {
-                audio.onended = () => {
-                    URL.revokeObjectURL(audioUrl);
-                    resolve();
-                };
-                audio.onloadedmetadata = () => {
-                    const duration = audio.duration;
-                    const timeToWait = Math.max(duration - 0.5, 0) * 1000;
-                    setTimeout(() => {
-                        URL.revokeObjectURL(audioUrl);
-                        resolve();
-                    }, timeToWait);
-                };
-                audio.play().catch(() => {
-                    URL.revokeObjectURL(audioUrl);
-                    resolve();
-                });
+                // Initialize audio context if needed
+                if (!STATE.audioContext.ctx) {
+                    STATE.audioContext.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                STATE.audioContext.ctx
+                    .decodeAudioData(aBuffer.slice(0))
+                    .then((buffer) => {
+                        // Stop any currently playing sound
+                        if (STATE.audioContext.src) {
+                            STATE.audioContext.src.stop();
+                            STATE.audioContext.src = null;
+                        }
+
+                        // Set up gain node
+                        STATE.audioContext.gain = STATE.audioContext.ctx.createGain();
+                        STATE.audioContext.gain.gain.value = USER_SETTINGS.buttonSoundVolume();
+                        STATE.audioContext.gain.connect(STATE.audioContext.ctx.destination);
+
+                        // Create and configure source
+                        STATE.audioContext.src = STATE.audioContext.ctx.createBufferSource();
+                        STATE.audioContext.src.buffer = buffer;
+                        STATE.audioContext.src.connect(STATE.audioContext.gain);
+
+                        const duration = buffer.duration;
+                        const timeToWait = Math.max(duration - 0.5, 0) * 1000;
+
+                        // Start playback and set up resolution
+                        STATE.audioContext.src.start(0);
+                        setTimeout(() => resolve(), timeToWait);
+                    })
+                    .catch(() => resolve());
             });
         }
     }
@@ -1673,7 +1693,6 @@
                         if (target) {
                             STATE.revealEffectPlayed = true;
 
-                            // Play reveal audio effect
                             if (USER_SETTINGS.enableButtonSound()) {
                                 async function playRevealSound() {
                                     const audio = await httpRequest(
@@ -1685,16 +1704,33 @@
                                         true,
                                         'blob'
                                     );
-                                    const audioUrl = URL.createObjectURL(audio.response);
-                                    const audioElement = new Audio(audioUrl);
-                                    audioElement.volume = USER_SETTINGS.buttonSoundVolume();
-                                    audioElement.play().catch((error) => {
-                                        console.error('Error playing reveal sound:', error);
-                                    });
+                                    const aBuffer = await audio.response.arrayBuffer();
+
+                                    if (!STATE.audioContext.ctx) {
+                                        STATE.audioContext.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                                    }
+
+                                    return STATE.audioContext.ctx
+                                        .decodeAudioData(aBuffer.slice(0))
+                                        .then((buffer) => {
+                                            if (STATE.audioContext.src) {
+                                                STATE.audioContext.src.stop();
+                                                STATE.audioContext.src = null;
+                                            }
+                                            STATE.audioContext.gain = STATE.audioContext.ctx.createGain();
+                                            STATE.audioContext.gain.gain.value = USER_SETTINGS.buttonSoundVolume();
+                                            STATE.audioContext.gain.connect(STATE.audioContext.ctx.destination);
+                                            STATE.audioContext.src = STATE.audioContext.ctx.createBufferSource();
+                                            STATE.audioContext.src.buffer = buffer;
+                                            STATE.audioContext.src.connect(STATE.audioContext.gain);
+                                            STATE.audioContext.src.start(0);
+                                        })
+                                        .catch((error) => {
+                                            console.error('Error playing reveal sound:', error);
+                                        });
                                 }
                                 playRevealSound();
                             }
-
                             const rect = target.getBoundingClientRect();
                             playLottieAnimation(target, WARM['explosionAnimation'], {
                                 loop: false,
