@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.149
+// @version 0.1.150
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -1336,6 +1336,39 @@
         return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     }
 
+    async function playSound(soundUrl, cacheTimeSeconds = 365 * 24 * 60 * 60, volume = USER_SETTINGS.buttonSoundVolume()) {
+        const audioBlob = await httpRequest(soundUrl, cacheTimeSeconds, false, true, true, true, 'blob');
+        const aBuffer = await audioBlob.response.arrayBuffer();
+
+        if (!STATE.audioContext.ctx) {
+            STATE.audioContext.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        return STATE.audioContext.ctx
+            .decodeAudioData(aBuffer.slice(0))
+            .then((buffer) => {
+                if (STATE.audioContext.src) {
+                    STATE.audioContext.src.stop();
+                    STATE.audioContext.src = null;
+                }
+
+                STATE.audioContext.gain = STATE.audioContext.ctx.createGain();
+                STATE.audioContext.gain.gain.value = volume;
+                STATE.audioContext.gain.connect(STATE.audioContext.ctx.destination);
+
+                STATE.audioContext.src = STATE.audioContext.ctx.createBufferSource();
+                STATE.audioContext.src.buffer = buffer;
+                STATE.audioContext.src.connect(STATE.audioContext.gain);
+                STATE.audioContext.src.start(0);
+
+                return buffer.duration;
+            })
+            .catch((error) => {
+                console.error('Error playing sound:', error);
+                return 0;
+            });
+    }
+
     async function playButtonSound(button) {
         let soundUrl;
         if (button.classList.contains('v1')) {
@@ -1349,42 +1382,10 @@
         }
 
         if (soundUrl) {
-            const audioBlob = await httpRequest(soundUrl, 365 * 24 * 60 * 60, false, true, true, true, 'blob');
-            const aBuffer = await audioBlob.response.arrayBuffer();
-
-            await new Promise((resolve) => {
-                // Initialize audio context if needed
-                if (!STATE.audioContext.ctx) {
-                    STATE.audioContext.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-
-                STATE.audioContext.ctx
-                    .decodeAudioData(aBuffer.slice(0))
-                    .then((buffer) => {
-                        // Stop any currently playing sound
-                        if (STATE.audioContext.src) {
-                            STATE.audioContext.src.stop();
-                            STATE.audioContext.src = null;
-                        }
-
-                        // Set up gain node
-                        STATE.audioContext.gain = STATE.audioContext.ctx.createGain();
-                        STATE.audioContext.gain.gain.value = USER_SETTINGS.buttonSoundVolume();
-                        STATE.audioContext.gain.connect(STATE.audioContext.ctx.destination);
-
-                        // Create and configure source
-                        STATE.audioContext.src = STATE.audioContext.ctx.createBufferSource();
-                        STATE.audioContext.src.buffer = buffer;
-                        STATE.audioContext.src.connect(STATE.audioContext.gain);
-
-                        const duration = buffer.duration;
-                        const timeToWait = Math.max(duration - 0.5, 0) * 1000;
-
-                        // Start playback and set up resolution
-                        STATE.audioContext.src.start(0);
-                        setTimeout(() => resolve(), timeToWait);
-                    })
-                    .catch(() => resolve());
+            await new Promise(async (resolve) => {
+                const duration = await playSound(soundUrl);
+                const timeToWait = Math.max(duration - 0.5, 0) * 1000;
+                setTimeout(() => resolve(), timeToWait);
             });
         }
     }
@@ -1694,42 +1695,7 @@
                             STATE.revealEffectPlayed = true;
 
                             if (USER_SETTINGS.enableButtonSound()) {
-                                async function playRevealSound() {
-                                    const audio = await httpRequest(
-                                        CONFIG.soundUrlReveal,
-                                        365 * 24 * 60 * 60,
-                                        false,
-                                        true,
-                                        true,
-                                        true,
-                                        'blob'
-                                    );
-                                    const aBuffer = await audio.response.arrayBuffer();
-
-                                    if (!STATE.audioContext.ctx) {
-                                        STATE.audioContext.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                                    }
-
-                                    return STATE.audioContext.ctx
-                                        .decodeAudioData(aBuffer.slice(0))
-                                        .then((buffer) => {
-                                            if (STATE.audioContext.src) {
-                                                STATE.audioContext.src.stop();
-                                                STATE.audioContext.src = null;
-                                            }
-                                            STATE.audioContext.gain = STATE.audioContext.ctx.createGain();
-                                            STATE.audioContext.gain.gain.value = USER_SETTINGS.buttonSoundVolume();
-                                            STATE.audioContext.gain.connect(STATE.audioContext.ctx.destination);
-                                            STATE.audioContext.src = STATE.audioContext.ctx.createBufferSource();
-                                            STATE.audioContext.src.buffer = buffer;
-                                            STATE.audioContext.src.connect(STATE.audioContext.gain);
-                                            STATE.audioContext.src.start(0);
-                                        })
-                                        .catch((error) => {
-                                            console.error('Error playing reveal sound:', error);
-                                        });
-                                }
-                                playRevealSound();
+                                playSound(CONFIG.soundUrlReveal);
                             }
                             const rect = target.getBoundingClientRect();
                             playLottieAnimation(target, WARM['explosionAnimation'], {
