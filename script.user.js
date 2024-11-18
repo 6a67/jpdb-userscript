@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.150
+// @version 0.1.151
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -3461,6 +3461,36 @@
 
         // Remove injected CSS
         document.head.removeChild(style);
+    }
+
+    function cab() {
+        function createAudioButton(sources, volume = 1, autoplay = false) {
+            const audioButton = document.createElement('a');
+            audioButton.className = 'icon-link vocabulary-audio';
+            audioButton.href = '#';
+            audioButton.dataset.audio = sources;
+            audioButton.dataset.audioVolume = volume;
+
+            if (autoplay) {
+                audioButton.dataset.audioAutoplay = autoplay;
+            }
+
+            audioButton.innerHTML = '<i class="ti ti-volume"></i>';
+
+            audioButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                const sources = audioButton.dataset.audio.split(',');
+                const source = sources[Math.floor(Math.random() * sources.length)];
+                playSound(source, 1 * 60 * 60, audioButton.dataset.audioVolume);
+            });
+
+            // Invert the color of the button by 20%
+            audioButton.style.filter = 'invert(50%)';
+
+            return audioButton;
+        }
+        const but = createAudioButton('https://example.com/audio.mp3', 1, false);
+        document.body.appendChild(but);
     }
 
     function init() {
