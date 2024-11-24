@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.153
+// @version 0.1.154
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -994,22 +994,17 @@
         `,
 
         fixCenteredAnswerBox: `
-            .answer-box > .plain > :empty {
-                display: none;
-            }
-
             .answer-box > .plain > div[style*="padding-left"] {
                 padding-left: 0px !important;
+                flex: 1;
             }
 
-            .answer-box > .plain  {
-                display: flex;
-                align-items: baseline;
-                justify-content: space-between !important;
+            .answer-box > .plain > div[style*="width"] {
+                width: 0px !important;
             }
 
-            .inserted-dropdown {
-                margin-right: 0px !important;
+            .answer-box > .plain > div[style*="column"] {
+                flex: 0 !important;
             }
         `
     };
@@ -3276,63 +3271,7 @@
     }
 
     function initFixCenteredAnswerBox() {
-        function centerElements() {
-            const answerBox = document.querySelector('.answer-box');
-            if (!answerBox) return;
-            if (answerBox.classList.contains('centered-fix')) return;
-            const plain = answerBox.querySelector('.plain');
-            if (!plain) return;
-            let plain2 = plain.querySelector('.plain');
-            let revealed = true;
-            if (!plain2) {
-                const divs = plain.querySelectorAll('div');
-                for (const div of divs) {
-                    if (div.style.cssText === '') {
-                        plain2 = div;
-                        revealed = false;
-                        break;
-                    }
-                }
-            }
-            if (!plain2) return;
-
-            const div = document.createElement('div');
-            div.style = 'display: flex; flex: 1;';
-            if (revealed) {
-                plain.insertBefore(div, plain2);
-                GM_addStyle(STYLES.fixCenteredAnswerBox);
-            } else {
-                plain.insertBefore(div, plain2);
-                const lastDiv = plain.querySelector('div:last-child');
-                lastDiv.style.paddingLeft = '0';
-                lastDiv.style.flex = '1';
-
-                const divs = plain.querySelectorAll('div');
-                divs.forEach((d) => {
-                    if (d !== div && !d.textContent.trim() && !d.children.length) {
-                        d.remove();
-                    }
-                });
-            }
-
-            answerBox.classList.add('centered-fix');
-        }
-
-        centerElements();
-
-        let lastProcessedMutation = null;
-
-        const observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                if (mutation === lastProcessedMutation) {
-                    continue;
-                }
-                lastProcessedMutation = mutation;
-                centerElements();
-            }
-        });
-
-        observer.observe(document.body.querySelector('.answer-box'), { childList: true, subtree: true });
+        GM_addStyle(STYLES.fixCenteredAnswerBox);
     }
 
     async function initReviewProgress() {
@@ -3589,7 +3528,7 @@
 
         if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix)) {
             initDropdownOnReviewPage();
-            // initFixCenteredAnswerBox();
+            initFixCenteredAnswerBox();
         }
 
         if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && DEBUG.enableProgress) {
