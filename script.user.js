@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.152
+// @version 0.1.153
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -3589,7 +3589,7 @@
 
         if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix)) {
             initDropdownOnReviewPage();
-            initFixCenteredAnswerBox();
+            // initFixCenteredAnswerBox();
         }
 
         if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix) && DEBUG.enableProgress) {
