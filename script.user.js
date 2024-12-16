@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.154
+// @version 0.1.155
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -774,6 +774,24 @@
 
             .pending-translation {
                 cursor: pointer;
+            }
+
+            .answer-box > img {
+                align-self: center;
+                object-fit: contain;
+                max-height: 50vh;
+            }
+
+            @media (orientation: portrait) {
+                .answer-box > img {
+                    max-width: 80vw;
+                }
+            }
+            
+            @media (orientation: landscape) {
+                .answer-box > img {
+                    max-width: 40vw;
+                }
             }
         `,
 
