@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.156
+// @version 0.1.157
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -1365,7 +1365,7 @@
     async function injectFont() {
         // Inject Manrope main font
         const fontUrl = 'https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap';
-        const fontStyles = await httpRequest(fontUrl, 24 * 60 * 60);
+        const fontStyles = await httpRequest(fontUrl, 24 * 60 * 60, true, false, true, false);
         if (fontStyles) {
             GM_addStyle(fontStyles.responseText);
         }
@@ -1373,7 +1373,7 @@
         // Inject Noto Sans JP for review buttons
         if (USER_SETTINGS.enableButtonStyling() && TRANSLATIONS[USER_SETTINGS.translationLanguage()]['config.reviewButtonFontWeight']) {
             const fontUrl = 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap';
-            const fontStyles = await httpRequest(fontUrl, 24 * 60 * 60);
+            const fontStyles = await httpRequest(fontUrl, 24 * 60 * 60, true, false, true, false);
             if (fontStyles) {
                 GM_addStyle(fontStyles.responseText);
                 GM_addStyle(`
@@ -2839,7 +2839,7 @@
                 cacheTime,
                 false,
                 false,
-                false,
+                true,
                 false
             );
             const parser = new DOMParser();
@@ -2852,7 +2852,7 @@
                     cacheTime,
                     false,
                     false,
-                    false,
+                    true,
                     false
                 );
                 return {
