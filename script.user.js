@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.155
+// @version 0.1.156
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -153,16 +153,19 @@
             ctx: null,
             src: null,
             gain: null
-        }
+        },
+        apiKey: GM_getValue('apiKey', '')
     };
 
     let WARM = {};
 
     const CONFIG = {
+        apiBaseUrl: 'https://jpdb.io/api/v1',
         learnPageUrl: 'https://jpdb.io/learn',
         deckListPageUrl: 'https://jpdb.io/deck-list',
         reviewPageUrlPrefix: 'https://jpdb.io/review',
         settingsPageUrl: 'https://jpdb.io/settings',
+        shownSentencePrefix: 'https://jpdb.io/edit-shown-sentence',
         deckListClass: 'deck-list',
         deckListSelector: 'div.deck-list',
         newDeckListClass: 'injected-deck-list',
@@ -755,7 +758,8 @@
                 align-items: center;
             }
 
-            .kanji-copy-button {
+            .kanji-copy-button,
+            .sentence-clear-button {
                 all: unset !important;
                 margin-left: 0.5em !important;
                 cursor: pointer !important;
@@ -765,6 +769,10 @@
             .kanji-copy-button-svg {
                 fill: var(--subsection-label-color) !important;
                 vertical-align: middle;
+            }
+
+            .sentence-clear-button-svg {
+                fill: var(--subsection-label-color) !important;
             }
 
             /* Remove shadow from review bar */
@@ -1227,6 +1235,66 @@
         log('Fetching fresh response from network');
         const response = await makeRequest();
         return handleResponse(response);
+    }
+
+    async function parseApiKey() {
+        const settingsPage = await httpRequest(CONFIG.settingsPageUrl, -1, false, false, false, true);
+        const apiKeyMatch = await settingsPage.responseText.match(/<td>API key<\/td>.+?>([A-Za-z0-9]+)(?=<\/td>)/);
+        if (!apiKeyMatch) {
+            throw new Error('Failed to parse API key');
+        }
+
+        const apiKey = apiKeyMatch[1];
+        STATE.apiKey = apiKey;
+        GM_setValue('apiKey', STATE.apiKey);
+
+        return apiKey;
+    }
+
+    async function apiRequest(endpoint, body, method = 'POST') {
+        if (!STATE.apiKey) {
+            await parseApiKey();
+        }
+
+        console.log(STATE.apiKey);
+
+        const headers = {
+            'Authorization': `Bearer ${STATE.apiKey}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
+
+        // GM_xmlhttpRequest
+        return new Promise((resolve, reject) => {
+            const makeRequest = (retrying = false) => {
+                GM_xmlhttpRequest({
+                    method: method,
+                    url: `${CONFIG.apiBaseUrl}${endpoint}`,
+                    data: JSON.stringify(body),
+                    headers: headers,
+                    responseType: 'json',
+                    onload: async (response) => {
+                        if (response.status === 200) {
+                            resolve(response.response);
+                        } else if (response.status === 403 && !retrying) {
+                            try {
+                                await parseApiKey();
+                                // Retry with updated headers
+                                headers.Authorization = `Bearer ${CONFIG.apiKey}`;
+                                makeRequest(true);
+                            } catch (error) {
+                                reject(error);
+                            }
+                        } else {
+                            reject(response.response);
+                        }
+                    },
+                    onerror: (response) => reject(response)
+                });
+            };
+
+            makeRequest();
+        });
     }
 
     async function loadScript(url) {
@@ -3530,6 +3598,58 @@
         document.body.appendChild(but);
     }
 
+    async function initSentenceClearButton() {
+        // Find the form with action containing "edit-shown-sentence"
+        const sentenceForm = document.querySelector('form[action*="edit-shown-sentence"]');
+        if (!sentenceForm) return;
+
+        // Find the nearest h5 element
+        const h5Element = sentenceForm.closest('div').querySelector('h5');
+        if (!h5Element) return;
+
+        // Create button container and SVG
+        const buttonContainer = document.createElement('button');
+        buttonContainer.classList.add('sentence-clear-button');
+        buttonContainer.title = 'Clear sentence via API';
+
+        const clearButton = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        clearButton.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        clearButton.setAttribute('viewBox', '0 0 24 24');
+        clearButton.classList.add('sentence-clear-button-svg');
+        clearButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#2v14c0"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M14.12 10.47L12 12.59l-2.13-2.12-1.41 1.41L10.59 14l-2.12 2.12 1.41 1.41L12 15.41l2.12 2.12 1.41-1.41L13.41 14l2.12-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4zM6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9z"/></svg>`;
+
+        // Match the font size of h5
+        const h5Style = window.getComputedStyle(h5Element);
+        clearButton.style.width = h5Style.fontSize;
+        clearButton.style.height = h5Style.fontSize;
+
+        buttonContainer.appendChild(clearButton);
+
+        // Add click handler
+        buttonContainer.addEventListener('click', async () => {
+            const url = new URL(window.location.href);
+            const vid = url.searchParams.get('v');
+            const sid = url.searchParams.get('s');
+            console.log(vid, sid);
+            const confirmed = confirm('Are you sure you want to clear the sentence?');
+
+            if (!confirmed) return;
+
+            const body = {
+                'vid': Number(vid),
+                'sid': Number(sid),
+                'sentence': '',
+                'clear_audio': true
+            };
+
+            await apiRequest('/set-card-sentence', body);
+            window.location.reload();
+        });
+
+        // Add button next to h5
+        h5Element.appendChild(buttonContainer);
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -3592,6 +3712,10 @@
                 }
             }
             loadSound();
+        }
+
+        if (window.location.href.startsWith(CONFIG.shownSentencePrefix)) {
+            initSentenceClearButton();
         }
 
         document.dispatchEvent(new CustomEvent(`${GM_info.script.name}-initialized`));
