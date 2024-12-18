@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.159
+// @version 0.1.160
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -2524,7 +2524,11 @@
                         sectionsHTML += `
                             <div style="margin-left: ${extraIndent};"${hiddenClass}>
                                 <label for="${setting.getName()}">${setting.getShortDescription()}</label>
-                                ${setting.getLongDescription() ? `<p style="opacity: 0.8; margin-top: 0.5rem">\n${setting.getLongDescription()}\n</p>` : ''}
+                                ${
+                                    setting.getLongDescription()
+                                        ? `<p style="opacity: 0.8; margin-top: 0.5rem">\n${setting.getLongDescription()}\n</p>`
+                                        : ''
+                                }
                                 <textarea id="${setting.getName()}" name="${setting.getName()}" style="width: 100%; height: 10rem; margin-top: 0.5rem;" spellcheck="false">${setting()}</textarea>
                             </div>
                         `;
@@ -3689,11 +3693,17 @@
         uploadForm.insertAdjacentElement('afterend', div);
 
         // Helper function to fetch blob and create URL
+        const audioCache = new Map();
         async function fetchAudioBlob(url) {
+            if (audioCache.has(url)) {
+                return audioCache.get(url);
+            }
             console.log('Fetching audio blob from:', url);
             const response = await httpRequest(url, -1, false, false, false, false, 'blob');
             const blob = await response.response;
-            return URL.createObjectURL(blob);
+            const blobUrl = URL.createObjectURL(blob);
+            audioCache.set(url, { blob, blobUrl });
+            return { blob, blobUrl };
         }
 
         // Helper function to add audio elements
@@ -3707,12 +3717,8 @@
                 if (resultBox.textContent === 'Loading extra audio sources...') {
                     resultBox.textContent = '';
                 }
-                if (div.textContent === 'Loading extra audio sources...') {
-                    div.textContent = '';
-                }
                 for (const source of sources) {
                     try {
-                        const blobUrl = await fetchAudioBlob(source.url);
                         successCount++;
                         const container = document.createElement('div');
                         container.style.cssText = `
@@ -3722,21 +3728,24 @@
                             padding: 5px;
                         `;
 
-                        // Add source name
                         const sourceName = document.createElement('span');
                         sourceName.textContent = source.name || 'Audio';
                         sourceName.style.marginRight = '10px';
                         container.appendChild(sourceName);
 
                         const audio = document.createElement('audio');
-                        audio.src = blobUrl;
-
                         const playButton = document.createElement('a');
                         playButton.classList.add('icon-link');
                         playButton.innerHTML = '<i class="ti ti-volume"></i>';
                         playButton.style.cursor = 'pointer';
-                        playButton.onclick = (e) => {
+
+                        let audioData = null;
+                        playButton.onclick = async (e) => {
                             e.preventDefault();
+                            if (!audioData) {
+                                audioData = await fetchAudioBlob(source.url);
+                                audio.src = audioData.blobUrl;
+                            }
                             if (audio.paused) {
                                 audio.play();
                             } else {
@@ -3745,7 +3754,6 @@
                             }
                         };
 
-                        // Add plus button
                         const plusButton = document.createElement('a');
                         plusButton.classList.add('icon-link');
                         plusButton.innerHTML = '+';
@@ -3755,22 +3763,18 @@
 
                         plusButton.onclick = async (e) => {
                             e.preventDefault();
-
+                            if (!audioData) {
+                                audioData = await fetchAudioBlob(source.url);
+                                audio.src = audioData.blobUrl;
+                            }
                             audio.play();
 
-                            // Fetch the blob from blob URL
-                            const response = await fetch(blobUrl);
-                            const blob = await response.blob();
-
-                            // Create file from blob
                             const fileName = source.url.split('/').pop() || 'audio.mp3';
-                            const file = new File([blob], fileName, { type: blob.type });
+                            const file = new File([audioData.blob], fileName, { type: audioData.blob.type });
 
-                            // Create DataTransfer and add file
                             const dataTransfer = new DataTransfer();
                             dataTransfer.items.add(file);
 
-                            // Set input files and trigger change
                             fileInput.files = dataTransfer.files;
                             fileInput.dispatchEvent(new Event('change', { bubbles: true }));
                         };
@@ -3780,12 +3784,12 @@
                         container.appendChild(plusButton);
                         div.appendChild(container);
                     } catch (error) {
-                        console.error(`Error fetching audio blob for ${source}:`, error);
+                        console.error(`Error setting up audio source for ${source.url}:`, error);
                     }
-                    if (successCount === 0) {
-                        resultBox.textContent = 'Failed to load any audio sources.';
-                        resultBox.style.color = '#ff4444';
-                    }
+                }
+                if (successCount === 0) {
+                    resultBox.textContent = 'Failed to load any audio sources.';
+                    resultBox.style.color = '#ff4444';
                 }
             }
         }
