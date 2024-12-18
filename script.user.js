@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.158
+// @version 0.1.159
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -2524,8 +2524,8 @@
                         sectionsHTML += `
                             <div style="margin-left: ${extraIndent};"${hiddenClass}>
                                 <label for="${setting.getName()}">${setting.getShortDescription()}</label>
+                                ${setting.getLongDescription() ? `<p style="opacity: 0.8; margin-top: 0.5rem">\n${setting.getLongDescription()}\n</p>` : ''}
                                 <textarea id="${setting.getName()}" name="${setting.getName()}" style="width: 100%; height: 10rem; margin-top: 0.5rem;" spellcheck="false">${setting()}</textarea>
-                                ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
                             </div>
                         `;
                     } else if (setting.getColorPicker()) {
