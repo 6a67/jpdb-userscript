@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.157
+// @version 0.1.158
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -166,6 +166,7 @@
         reviewPageUrlPrefix: 'https://jpdb.io/review',
         settingsPageUrl: 'https://jpdb.io/settings',
         shownSentencePrefix: 'https://jpdb.io/edit-shown-sentence',
+        editAudioPrefix: 'https://jpdb.io/edit-audio',
         deckListClass: 'deck-list',
         deckListSelector: 'div.deck-list',
         newDeckListClass: 'injected-deck-list',
@@ -316,6 +317,17 @@
         settings.translationLanguage = new UserSetting('translation', 'None', 'Partial translation', null, Object.keys(TRANSLATIONS));
 
         settings.showAdvancedSettings = new UserSetting('showAdvancedSettings', false, 'Show advanced settings');
+        settings.advancedYomiVocabAudioServer = new UserSetting(
+            'advancedYomiVocabAudioServer',
+            '',
+            'Yomi vocab audio server (experimental)',
+            "A comma-separated list of URLs with '{term}' as placeholder (e.g. 'http://localhost:5050/?term={term}') that can be used to set custom audio for vocabularies.",
+            null,
+            0,
+            0,
+            settings.showAdvancedSettings,
+            true
+        );
         settings.advancedUseExperimentalThemeGenerator = new UserSetting(
             'advancedUseExperimentalThemeGenerator',
             false,
@@ -3650,6 +3662,162 @@
         h5Element.appendChild(buttonContainer);
     }
 
+    async function yomiCustomVocabAudio() {
+        // Parse vocab
+        const plain = document.querySelector('.plain').cloneNode(true);
+        if (!plain) return;
+        plain.querySelectorAll('rt').forEach((rt) => rt.remove());
+        const vocab = plain.textContent.trim();
+
+        // Result object
+        const uploadForm = document.getElementById('upload-form');
+        if (!uploadForm) return;
+        const div = document.createElement('div');
+        div.id = 'yomi-custom-audio';
+
+        // Add heading
+        const heading = document.createElement('h6');
+        heading.textContent = 'External Audio Sources';
+        heading.style.marginTop = '1rem';
+
+        div.appendChild(heading);
+
+        const resultBox = document.createElement('div');
+        resultBox.textContent = 'Loading extra audio sources...';
+        div.appendChild(resultBox);
+
+        uploadForm.insertAdjacentElement('afterend', div);
+
+        // Helper function to fetch blob and create URL
+        async function fetchAudioBlob(url) {
+            console.log('Fetching audio blob from:', url);
+            const response = await httpRequest(url, -1, false, false, false, false, 'blob');
+            const blob = await response.response;
+            return URL.createObjectURL(blob);
+        }
+
+        // Helper function to add audio elements
+        async function addAudioSources(sources) {
+            const fileInput = document.querySelector('input[type="file"]');
+            if (!fileInput) return;
+
+            let successCount = 0;
+
+            if (sources && sources.length > 0) {
+                if (resultBox.textContent === 'Loading extra audio sources...') {
+                    resultBox.textContent = '';
+                }
+                if (div.textContent === 'Loading extra audio sources...') {
+                    div.textContent = '';
+                }
+                for (const source of sources) {
+                    try {
+                        const blobUrl = await fetchAudioBlob(source.url);
+                        successCount++;
+                        const container = document.createElement('div');
+                        container.style.cssText = `
+                            display: flex;
+                            align-items: center;
+                            margin: 5px 0;
+                            padding: 5px;
+                        `;
+
+                        // Add source name
+                        const sourceName = document.createElement('span');
+                        sourceName.textContent = source.name || 'Audio';
+                        sourceName.style.marginRight = '10px';
+                        container.appendChild(sourceName);
+
+                        const audio = document.createElement('audio');
+                        audio.src = blobUrl;
+
+                        const playButton = document.createElement('a');
+                        playButton.classList.add('icon-link');
+                        playButton.innerHTML = '<i class="ti ti-volume"></i>';
+                        playButton.style.cursor = 'pointer';
+                        playButton.onclick = (e) => {
+                            e.preventDefault();
+                            if (audio.paused) {
+                                audio.play();
+                            } else {
+                                audio.pause();
+                                audio.currentTime = 0;
+                            }
+                        };
+
+                        // Add plus button
+                        const plusButton = document.createElement('a');
+                        plusButton.classList.add('icon-link');
+                        plusButton.innerHTML = '+';
+                        plusButton.style.paddingLeft = '8px';
+                        plusButton.style.cursor = 'pointer';
+                        plusButton.style.scale = '1.25';
+
+                        plusButton.onclick = async (e) => {
+                            e.preventDefault();
+
+                            audio.play();
+
+                            // Fetch the blob from blob URL
+                            const response = await fetch(blobUrl);
+                            const blob = await response.blob();
+
+                            // Create file from blob
+                            const fileName = source.url.split('/').pop() || 'audio.mp3';
+                            const file = new File([blob], fileName, { type: blob.type });
+
+                            // Create DataTransfer and add file
+                            const dataTransfer = new DataTransfer();
+                            dataTransfer.items.add(file);
+
+                            // Set input files and trigger change
+                            fileInput.files = dataTransfer.files;
+                            fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        };
+
+                        container.appendChild(audio);
+                        container.appendChild(playButton);
+                        container.appendChild(plusButton);
+                        div.appendChild(container);
+                    } catch (error) {
+                        console.error(`Error fetching audio blob for ${source}:`, error);
+                    }
+                    if (successCount === 0) {
+                        resultBox.textContent = 'Failed to load any audio sources.';
+                        resultBox.style.color = '#ff4444';
+                    }
+                }
+            }
+        }
+
+        // Get audio
+        const audioServers = USER_SETTINGS.advancedYomiVocabAudioServer()
+            .split(',')
+            .map((server) => server.trim())
+            .filter((server) => server.length > 0);
+
+        let totalSuccessCount = 0;
+
+        // Process each server individually
+        for (const audioserver of audioServers) {
+            try {
+                const response = await httpRequest(audioserver.replace('{term}', vocab), -1, false, false, false, false, 'json');
+                const sources = response.response.audioSources;
+                if (sources && sources.length > 0) {
+                    totalSuccessCount += sources.length;
+                }
+                await addAudioSources(sources);
+            } catch (error) {
+                console.error(`Error fetching audio from ${audioserver}:`, error);
+            }
+        }
+
+        if (totalSuccessCount === 0) {
+            resultBox.textContent = 'No audio sources found.';
+            resultBox.style.color = '#ff4444';
+        }
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -3716,6 +3884,10 @@
 
         if (window.location.href.startsWith(CONFIG.shownSentencePrefix)) {
             initSentenceClearButton();
+        }
+
+        if (window.location.href.startsWith(CONFIG.editAudioPrefix) && USER_SETTINGS.advancedYomiVocabAudioServer()) {
+            yomiCustomVocabAudio();
         }
 
         document.dispatchEvent(new CustomEvent(`${GM_info.script.name}-initialized`));
