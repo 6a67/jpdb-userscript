@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.160
+// @version 0.1.161
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -1539,7 +1539,8 @@
             size: { width: 100, height: 100 },
             opacity: 1,
             playBehind: false,
-            rotation: 0
+            rotation: 0,
+            alignTop: false
         };
 
         const animOptions = { ...defaultOptions, ...options };
@@ -1570,11 +1571,17 @@
                 const containerWidth = lottieContainer.offsetWidth;
                 const containerHeight = lottieContainer.offsetHeight;
 
-                const left = rect.left + (targetWidth - containerWidth) / 2;
-                const top = rect.top + (targetHeight - containerHeight) / 2;
-
-                lottieContainer.style.left = left + 'px';
-                lottieContainer.style.top = top + 'px';
+                if (animOptions.alignTop) {
+                    const left = rect.left + (targetWidth - containerWidth) / 2;
+                    const top = rect.top;
+                    lottieContainer.style.left = left + 'px';
+                    lottieContainer.style.top = top + 'px';
+                } else {
+                    const left = rect.left + (targetWidth - containerWidth) / 2;
+                    const top = rect.top + (targetHeight - containerHeight) / 2;
+                    lottieContainer.style.left = left + 'px';
+                    lottieContainer.style.top = top + 'px';
+                }
             }
         };
 
@@ -1641,7 +1648,26 @@
         }
         const answerBox = document.querySelector('.answer-box');
         const target = answerBox || document.querySelector('.result.kanji')?.querySelector('.plain').firstElementChild;
-        const rect = target.getBoundingClientRect();
+        let rect = target.getBoundingClientRect();
+
+        if (target.querySelector('img')) {
+            const elements = Array.from(target.children).filter((child) => child.tagName !== 'IMG');
+            rect = elements.reduce(
+                (acc, el) => {
+                    const elRect = el.getBoundingClientRect();
+                    return {
+                        top: Math.min(acc.top, elRect.top),
+                        left: Math.min(acc.left, elRect.left),
+                        right: Math.max(acc.right, elRect.right),
+                        bottom: Math.max(acc.bottom, elRect.bottom)
+                    };
+                },
+                { top: Infinity, left: Infinity, right: -Infinity, bottom: -Infinity }
+            );
+
+            rect.width = rect.right - rect.left;
+            rect.height = rect.bottom - rect.top;
+        }
 
         if (target) {
             playLottieAnimation(target, WARM['smallFireworkAnimation'], {
@@ -1649,14 +1675,16 @@
                 autoplay: true,
                 renderer: 'svg',
                 size: { width: rect.height * 3, height: rect.height },
-                opacity: 0.5
+                opacity: 0.5,
+                alignTop: true
             });
             playLottieAnimation(target, WARM['bigFireworkAnimation'], {
                 loop: false,
                 autoplay: true,
                 renderer: 'svg',
                 size: { width: rect.height * 3, height: rect.height },
-                opacity: 0.5
+                opacity: 0.5,
+                alignTop: true
             });
 
             // const html = document.querySelector('html');
@@ -1810,14 +1838,35 @@
                             if (USER_SETTINGS.enableButtonSound()) {
                                 playSound(CONFIG.soundUrlReveal);
                             }
-                            const rect = target.getBoundingClientRect();
+                            let rect = target.getBoundingClientRect();
+
+                            if (target.querySelector('img')) {
+                                const elements = Array.from(target.children).filter((child) => child.tagName !== 'IMG');
+                                rect = elements.reduce(
+                                    (acc, el) => {
+                                        const elRect = el.getBoundingClientRect();
+                                        return {
+                                            top: Math.min(acc.top, elRect.top),
+                                            left: Math.min(acc.left, elRect.left),
+                                            right: Math.max(acc.right, elRect.right),
+                                            bottom: Math.max(acc.bottom, elRect.bottom)
+                                        };
+                                    },
+                                    { top: Infinity, left: Infinity, right: -Infinity, bottom: -Infinity }
+                                );
+
+                                rect.width = rect.right - rect.left;
+                                rect.height = rect.bottom - rect.top;
+                            }
+
                             playLottieAnimation(target, WARM['explosionAnimation'], {
                                 loop: false,
                                 autoplay: true,
                                 renderer: 'svg',
                                 speed: 1.5,
                                 size: { width: rect.width, height: rect.height },
-                                opacity: 0.5
+                                opacity: 0.5,
+                                alignTop: true
                             });
                             playLottieAnimation(target, WARM['bigFireworkAnimation'], {
                                 loop: false,
@@ -1825,7 +1874,8 @@
                                 renderer: 'svg',
                                 speed: 1.5,
                                 size: { width: rect.width, height: rect.height },
-                                opacity: 0.5
+                                opacity: 0.5,
+                                alignTop: true
                             });
                             return true;
                         }
