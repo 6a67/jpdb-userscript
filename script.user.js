@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.161
+// @version 0.1.162
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -3774,7 +3774,6 @@
                         container.style.cssText = `
                             display: flex;
                             align-items: center;
-                            margin: 5px 0;
                             padding: 5px;
                         `;
 
@@ -3807,7 +3806,7 @@
                         const plusButton = document.createElement('a');
                         plusButton.classList.add('icon-link');
                         plusButton.innerHTML = '+';
-                        plusButton.style.paddingLeft = '8px';
+                        plusButton.style.margin = '0 0.5rem';
                         plusButton.style.cursor = 'pointer';
                         plusButton.style.scale = '1.25';
 
