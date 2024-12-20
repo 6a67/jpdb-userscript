@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.165
+// @version 0.1.166
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -319,6 +319,12 @@
         settings.translationLanguage = new UserSetting('translation', 'None', 'Partial translation', null, Object.keys(TRANSLATIONS));
 
         settings.showAdvancedSettings = new UserSetting('showAdvancedSettings', false, 'Show advanced settings');
+        settings.advancedStaticUserButtonsOnSmallScreens = new UserSetting(
+            'advancedStaticUserButtonsOnSmallScreens',
+            false,
+            'Static user buttons on small screens',
+            'Move the answer buttons to the bottom of the page on small screens instead of floating.'
+        );
         settings.advancedYomiVocabAudioServer = new UserSetting(
             'advancedYomiVocabAudioServer',
             '',
@@ -1046,7 +1052,23 @@
             .answer-box > .plain > div[style*="column"] {
                 flex: 0 !important;
             }
-        `
+        `,
+
+        staticAnswerButtons: `
+            @media screen and (max-height: 600px) {
+                .review-button-group {
+                    position: static;
+                }
+                
+                .container {
+                    flex-direction: column-reverse !important;
+                }
+
+                .with-bottom-padding-2 {
+                    display: none;
+                }
+            }
+        `,
     };
 
     function log(...args) {
@@ -1373,6 +1395,9 @@
         }
         if (USER_SETTINGS.enableReplaceKanjiStrokeOrder() && !USER_SETTINGS.useFontInsteadOfSvg()) {
             GM_addStyle(STYLES.hideKanjiSvg);
+        }
+        if (USER_SETTINGS.advancedStaticUserButtonsOnSmallScreens()) {
+            GM_addStyle(STYLES.staticAnswerButtons);
         }
     }
 
