@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.164
+// @version 0.1.165
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -154,7 +154,9 @@
             src: null,
             gain: null
         },
-        apiKey: GM_getValue('apiKey', '')
+        apiKey: GM_getValue('apiKey', ''),
+        currentVersion: GM_getValue('debug_currentVersion', ''),
+        previousVersion: GM_getValue('debug_previousVersion', ''),
     };
 
     let WARM = {};
@@ -3871,6 +3873,17 @@
         }
     }
 
+    function updateVersionVariables() {
+        if(STATE.currentVersion === GM_info.script.version) {
+            return;
+        }
+
+        GM_setValue('debug_lastVersion', STATE.currentVersion);
+        STATE.lastVersion = STATE.currentVersion;
+        GM_setValue('debug_currentVersion', GM_info.script.version);
+        STATE.currentVersion = GM_info.script.version;
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -3942,6 +3955,8 @@
         if (window.location.href.startsWith(CONFIG.editAudioPrefix) && USER_SETTINGS.advancedYomiVocabAudioServer()) {
             yomiCustomVocabAudio();
         }
+
+        updateVersionVariables();
 
         document.dispatchEvent(new CustomEvent(`${GM_info.script.name}-initialized`));
     }
