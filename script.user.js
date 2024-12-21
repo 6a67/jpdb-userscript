@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.172
+// @version 0.1.173
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -269,12 +269,21 @@
         });
 
         settings.showAdvancedSettings = new UserSetting('showAdvancedSettings', false, 'Show advanced settings');
-        settings.advancedStaticUserButtonsOnSmallScreens = new UserSetting(
-            'advancedStaticUserButtonsOnSmallScreens',
+        settings.advancedStaticAnswerButtonsOnSmallScreens = new UserSetting(
+            'advancedStaticAnswerButtonsOnSmallScreens',
             false,
-            'Static user buttons on small screens',
+            'Static answer buttons on small screens',
             {
                 longDescription: 'Move the answer buttons to the bottom of the page on small screens instead of floating.',
+                dependency: settings.showAdvancedSettings
+            }
+        );
+        settings.advancedTransparentBackgroundAnswerButtons = new UserSetting(
+            'advancedTransparentBackgroundAnswerButtons',
+            false,
+            'Transparent answer buttons background on small screens',
+            {
+                longDescription: 'Make the answer buttons background transparent on small screens.',
                 dependency: settings.showAdvancedSettings
             }
         );
@@ -544,11 +553,11 @@
             
             :is(html.dark-mode) .tooltip:before {
                 background-color: #101518;
+                pointer-events: none;
             }
             
             body,
             input {
-                font-family: 'Manrope', 'Nunito Sans', 'Extra Sans JP', 'Noto Sans Symbols2', 'Segoe UI', 'Noto Sans JP', 'Noto Sans CJK JP', 'Hiragino Sans GB', 'Meiryo', sans-serif;
             }
             
             input[type='button'],
@@ -1002,6 +1011,19 @@
                     display: none;
                 }
             }
+        `,
+
+        transparentBackgroundAnswerButtons: `
+            @media screen and (max-height: 600px) {
+                .review-button-group {
+                    background-color: transparent;
+                    pointer-events: none;
+                }
+                .review-button-group input {
+                    opacity: 1;
+                    pointer-events: auto;
+                }
+            }
         `
     };
 
@@ -1330,8 +1352,11 @@
         if (USER_SETTINGS.enableReplaceKanjiStrokeOrder() && !USER_SETTINGS.useFontInsteadOfSvg()) {
             GM_addStyle(STYLES.hideKanjiSvg);
         }
-        if (USER_SETTINGS.advancedStaticUserButtonsOnSmallScreens()) {
+        if (USER_SETTINGS.advancedStaticAnswerButtonsOnSmallScreens()) {
             GM_addStyle(STYLES.staticAnswerButtons);
+        }
+        if (USER_SETTINGS.advancedTransparentBackgroundAnswerButtons()) {
+            GM_addStyle(STYLES.transparentBackgroundAnswerButtons);
         }
     }
 
