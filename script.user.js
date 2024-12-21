@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.170
+// @version 0.1.169
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -1532,43 +1532,34 @@
 
     // Function to load the animation
     function loadLottieAnimation(animationData) {
-        return new Promise((resolve, reject) => {
-            if (!animationData) {
-                console.error('Animation data is null or undefined');
-                reject('Animation data is null or undefined');
-            }
+        if (!animationData) {
+            console.error('Animation data is null or undefined');
+            return null;
+        }
 
-            try {
-                const lottieContainer = document.createElement('div');
-                lottieContainer.style.visibility = 'hidden';
-                lottieContainer.style.position = 'absolute';
-                document.body.appendChild(lottieContainer);
+        try {
+            const lottieContainer = document.createElement('div');
+            lottieContainer.style.visibility = 'hidden';
+            lottieContainer.style.position = 'absolute';
+            document.body.appendChild(lottieContainer);
 
-                const animationConfig = {
-                    renderer: 'svg',
-                    loop: false,
-                    autoplay: false,
-                    animationData: animationData,
-                    container: lottieContainer
-                };
+            const animationConfig = {
+                renderer: 'svg',
+                loop: false,
+                autoplay: false,
+                animationData: animationData,
+                container: lottieContainer
+            };
 
-                const anim = lottie.loadAnimation(animationConfig);
-                lottieContainer.animation = anim;
-                anim.addEventListener('complete', () => {
-                    console.log('Animation stopped');
-                    resolve(lottieContainer);
-                });
+            const anim = lottie.loadAnimation(animationConfig);
+            lottieContainer.animation = anim;
+            anim.play();
 
-                // the stop event listener is not working
-                anim.setSpeed(Infinity);
-                anim.play();
-
-                return lottieContainer;
-            } catch (error) {
-                console.error('Error preparing animation:', error);
-                reject(error);
-            }
-        });
+            return lottieContainer;
+        } catch (error) {
+            console.error('Error preparing animation:', error);
+            return null;
+        }
     }
 
     function playLottieAnimation(targetElement, lottieContainer, options = {}) {
@@ -1679,10 +1670,6 @@
                         targetElement.style.position = '';
                     }
                 }
-            });
-
-            anim.addEventListener('rendered', () => {
-                console.log('Animation stopped');
             });
 
             if (!animOptions.playBehind) {
@@ -1833,7 +1820,7 @@
                                     await httpRequest(smallFirework, 365 * 24 * 60 * 60, true, false, true)
                                 ).responseText
                             );
-                            WARM['smallFireworkAnimation'] = await loadLottieAnimation(smallFireworkJson);
+                            WARM['smallFireworkAnimation'] = loadLottieAnimation(smallFireworkJson);
                         }
 
                         if (!WARM['bigFireworkAnimation']) {
@@ -1843,7 +1830,7 @@
                                     await httpRequest(bigFirework, 365 * 24 * 60 * 60, true, false, true)
                                 ).responseText
                             );
-                            WARM['bigFireworkAnimation'] = await loadLottieAnimation(bigFireworkJson);
+                            WARM['bigFireworkAnimation'] = loadLottieAnimation(bigFireworkJson);
                         }
 
                         if (!WARM['sparkleAnimation']) {
@@ -1853,7 +1840,7 @@
                                     await httpRequest(randomSparkle, 365 * 24 * 60 * 60, true, false, true)
                                 ).responseText
                             );
-                            WARM['sparkleAnimation'] = await loadLottieAnimation(sparkleJson);
+                            WARM['sparkleAnimation'] = loadLottieAnimation(sparkleJson);
                         }
 
                         if (!WARM['explosionAnimation']) {
@@ -1863,7 +1850,7 @@
                                     await httpRequest(explosion, 365 * 24 * 60 * 60, true, false, true)
                                 ).responseText
                             );
-                            WARM['explosionAnimation'] = await loadLottieAnimation(explosionJson);
+                            WARM['explosionAnimation'] = loadLottieAnimation(explosionJson);
                         }
                     } finally {
                         // Reset the promise when done, allowing future calls to run
@@ -1897,6 +1884,12 @@
                             if (USER_SETTINGS.enableButtonSound()) {
                                 playSound(CONFIG.soundUrlReveal);
                             }
+
+                            await new Promise((resolve) => {
+                                requestAnimationFrame(() => {
+                                    setTimeout(resolve, 25);
+                                });
+                            });
 
                             let rect = target.getBoundingClientRect();
 
