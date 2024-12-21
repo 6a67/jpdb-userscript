@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.169
+// @version 0.1.170
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -1864,7 +1864,7 @@
             warmUpEffects().then(() => {
                 // check if url has "review?c=" in it
                 if (window.location.href.includes('review?c=')) {
-                    async function revealEffect() {
+                    function revealEffect() {
                         if (STATE.revealEffectPlayed) {
                             return;
                         }
@@ -1885,12 +1885,6 @@
                                 playSound(CONFIG.soundUrlReveal);
                             }
 
-                            await new Promise((resolve) => {
-                                requestAnimationFrame(() => {
-                                    setTimeout(resolve, 25);
-                                });
-                            });
-
                             let rect = target.getBoundingClientRect();
 
                             if (target.querySelector('img')) {
@@ -1907,7 +1901,7 @@
                                     },
                                     { top: Infinity, left: Infinity, right: -Infinity, bottom: -Infinity }
                                 );
-
+r
                                 rect.width = rect.right - rect.left;
                                 rect.height = rect.bottom - rect.top;
                             }
