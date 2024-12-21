@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.171
+// @version 0.1.172
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -209,7 +209,10 @@
             'Welcome back!': 'お帰りなさい！',
             'Quiz': 'クイズ',
             'Leaderboard': 'リーダーボード',
-            'Meanings': '意味',
+            'Meanings': {
+                text: '意味',
+                blacklist: 'input' // example for a blacklist
+            },
             'config.reviewButtonFontWeight': '500'
         }
     };
@@ -2742,12 +2745,43 @@
         // Flag to prevent observer from triggering itself
         let isTranslating = false;
 
-        // Function to translate text
-        function translate(text) {
-            const language = USER_SETTINGS.translationLanguage();
-            if (language === 'None' || !TRANSLATIONS[language]) return text;
+        function getTranslation(originalText, element, language) {
+            if (language === 'None' || !TRANSLATIONS[language]) return originalText;
 
-            // Function to decode HTML entities
+            const translation = TRANSLATIONS[language][originalText.trim()];
+            if (!translation) return originalText;
+
+            // Handle simple string translations (backwards compatible)
+            if (typeof translation === 'string') {
+                return translation;
+            }
+
+            // Handle complex translations with selectors
+            if (typeof translation === 'object' && translation.text) {
+                // Check blacklist first
+                if (translation.blacklist && element.matches(translation.blacklist)) {
+                    return originalText;
+                }
+
+                // Check whitelist if present
+                if (translation.whitelist) {
+                    if (element.matches(translation.whitelist)) {
+                        return translation.text;
+                    }
+                    return originalText;
+                }
+
+                // No whitelist specified, return translation
+                return translation.text;
+            }
+
+            return originalText;
+        }
+
+        // Function to translate text
+        function translate(text, element) {
+            const language = USER_SETTINGS.translationLanguage();
+
             function decodeHTMLEntities(text) {
                 if (text && typeof text === 'string') {
                     text = text.replace(/<script[^>]*>([\S\s]*?)<\/script>/gim, '');
@@ -2756,24 +2790,34 @@
                 return text.normalize('NFKC');
             }
 
-            // Decode HTML entities in the input text
             const decodedText = decodeHTMLEntities(text);
 
-            // Check for exact match first
-            if (TRANSLATIONS[language][decodedText.trim()]) {
-                return TRANSLATIONS[language][decodedText.trim()];
+            // Check for exact match with selector constraints
+            const exactMatch = getTranslation(decodedText, element, language);
+            if (exactMatch !== decodedText) {
+                return exactMatch;
             }
 
-            // Check for regex pattern matches
+            // Handle regex patterns
             for (const [pattern, translation] of Object.entries(TRANSLATIONS[language])) {
                 if (pattern.startsWith('/') && pattern.endsWith('/')) {
-                    // It's a regex pattern
                     const regexPattern = new RegExp(pattern.slice(1, -1));
                     const match = decodedText.trim().match(regexPattern);
                     if (match) {
-                        let result = translation;
+                        const translationText = typeof translation === 'object' ? translation.text : translation;
+
+                        // Check selectors for regex matches too
+                        if (typeof translation === 'object') {
+                            if (translation.blacklist && element.matches(translation.blacklist)) {
+                                continue;
+                            }
+                            if (translation.whitelist && !element.matches(translation.whitelist)) {
+                                continue;
+                            }
+                        }
+
+                        let result = translationText;
                         for (let i = 0; i < match.length; i++) {
-                            // Use a non-greedy replace to avoid nested replacements
                             result = result.replace(new RegExp(`\\{${i}\\}`, 'g'), () => match[i] || '');
                         }
                         return result;
@@ -2781,26 +2825,21 @@
                 }
             }
 
-            // If no match found, return original text
             return text;
         }
 
         // Function to translate an element and its attributes
         function translateElement(element) {
             if (element.nodeType !== Node.ELEMENT_NODE) return;
-
-            // Check if the element has already been translated
             if (element.classList.contains('translated')) return;
 
             let wasTranslated = false;
 
-            // Translate text content if the element only contains text
             element.childNodes.forEach((node) => {
                 if (node.nodeType === Node.TEXT_NODE) {
                     const originalText = node.textContent.trim();
                     if (originalText) {
-                        // Only process non-empty text
-                        const translatedText = translate(originalText);
+                        const translatedText = translate(originalText, element);
                         if (originalText !== translatedText) {
                             node.textContent = translatedText;
                             wasTranslated = true;
