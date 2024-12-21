@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.170
+// @version 0.1.171
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -28,18 +28,17 @@
 
     // TODO: Unify the way the input method is set and not just use a number of booleans that are checked one after another to determine the input method
     class UserSetting {
-        constructor(
-            name,
-            defaultValue,
-            shortDescription,
-            longDescription = '',
-            possibleValues = null,
-            minVal = 1,
-            maxVal = 99999,
-            dependency = null,
-            largeTextField = false,
-            colorPicker = false
-        ) {
+        constructor(name, defaultValue, shortDescription, options = {}) {
+            const {
+                longDescription = '',
+                possibleValues = null,
+                minVal = 1,
+                maxVal = 99999,
+                dependency = null,
+                largeTextField = false,
+                colorPicker = false
+            } = options;
+
             this.name = name;
             this.defaultValue = defaultValue;
             this.shortDescription = shortDescription;
@@ -51,35 +50,22 @@
             this.largeTextField = largeTextField;
             this.colorPicker = colorPicker;
 
-            // Initialize the value, ensuring it's within possible values if specified
             this.value = this.validateValue(GM_getValue(name, defaultValue));
 
-            // Create a function that can be called and also act as an object
-            const settingFunction = (...args) => {
-                if (args.length > 0) {
-                    this.setValue(args[0]);
-                    return this.getValue();
-                } else {
-                    return this.getValue();
-                }
-            };
-
-            // Add methods to the function
-            settingFunction.getValue = this.getValue.bind(this);
-            settingFunction.setValue = this.setValue.bind(this);
-            settingFunction.getName = this.getName.bind(this);
-            settingFunction.getShortDescription = this.getShortDescription.bind(this);
-            settingFunction.getLongDescription = this.getLongDescription.bind(this);
-            settingFunction.getPossibleValues = this.getPossibleValues.bind(this);
-            settingFunction.getMinVal = this.getMinVal.bind(this);
-            settingFunction.getMaxVal = this.getMaxVal.bind(this);
-            settingFunction.getDependency = this.getDependency.bind(this);
-            settingFunction.getLargeTextField = this.getLargeTextField.bind(this);
-            settingFunction.getColorPicker = this.getColorPicker.bind(this);
-
-            // Return the function with added methods
-            return settingFunction;
+            return this.createSettingFunction();
         }
+
+        // Simple getters as class fields
+        getValue = () => this.value;
+        getName = () => this.name;
+        getShortDescription = () => this.shortDescription;
+        getLongDescription = () => this.longDescription;
+        getPossibleValues = () => this.possibleValues;
+        getMinVal = () => this.minVal;
+        getMaxVal = () => this.maxVal;
+        getDependency = () => this.dependency;
+        getLargeTextField = () => this.largeTextField;
+        getColorPicker = () => this.colorPicker;
 
         validateValue(value) {
             if (this.possibleValues && !this.possibleValues.includes(value)) {
@@ -95,10 +81,6 @@
             return value;
         }
 
-        getValue() {
-            return this.value;
-        }
-
         setValue(newValue) {
             const validatedValue = this.validateValue(newValue);
             if (validatedValue !== this.value) {
@@ -107,40 +89,31 @@
             }
         }
 
-        getName() {
-            return this.name;
-        }
+        createSettingFunction() {
+            const settingFunction = (...args) => {
+                if (args.length > 0) {
+                    this.setValue(args[0]);
+                    return this.getValue();
+                }
+                return this.getValue();
+            };
 
-        getShortDescription() {
-            return this.shortDescription;
-        }
+            // Add methods to the function using the class fields
+            Object.assign(settingFunction, {
+                getValue: this.getValue,
+                setValue: this.setValue.bind(this),
+                getName: this.getName,
+                getShortDescription: this.getShortDescription,
+                getLongDescription: this.getLongDescription,
+                getPossibleValues: this.getPossibleValues,
+                getMinVal: this.getMinVal,
+                getMaxVal: this.getMaxVal,
+                getDependency: this.getDependency,
+                getLargeTextField: this.getLargeTextField,
+                getColorPicker: this.getColorPicker
+            });
 
-        getLongDescription() {
-            return this.longDescription;
-        }
-
-        getPossibleValues() {
-            return this.possibleValues;
-        }
-
-        getMinVal() {
-            return this.minVal;
-        }
-
-        getMaxVal() {
-            return this.maxVal;
-        }
-
-        getDependency() {
-            return this.dependency;
-        }
-
-        getLargeTextField() {
-            return this.largeTextField;
-        }
-
-        getColorPicker() {
-            return this.colorPicker;
+            return settingFunction;
         }
     }
 
@@ -243,69 +216,38 @@
 
     const createUserSettings = () => {
         const settings = {};
-        settings.enableButtonStyling = new UserSetting(
-            'enableButtonStyling',
-            true,
-            'Button styling',
-            'Apply custom styles to review page buttons.'
-        );
-        settings.enableButtonEffects = new UserSetting(
-            'enableButtonEffects',
-            true,
-            'Button effects',
-            '',
-            null,
-            0,
-            1,
-            settings.enableButtonStyling
-        );
-        settings.enableButtonSound = new UserSetting(
-            'enableButtonSound',
-            true,
-            'Button sounds',
-            '',
-            null,
-            0,
-            1,
-            settings.enableButtonStyling
-        );
-        settings.buttonSoundVolume = new UserSetting(
-            'buttonSoundVolume',
-            0.7,
-            'Button sound volume',
-            '',
-            null,
-            0,
-            1,
-            settings.enableButtonSound
-        );
-        settings.buttonSoundDelay = new UserSetting(
-            'buttonSoundDelay',
-            -1,
-            'Button sound delay',
-            'Set delay before redirect after sound plays. -1 for auto-detect, large negative to disable.',
-            null,
-            -99999,
-            99999,
-            settings.enableButtonSound
-        );
-        settings.enableReplaceKanjiStrokeOrder = new UserSetting('enableReplaceKanjiStrokeOrder', true, 'KanjiVG stroke order', '');
-        settings.useFontInsteadOfSvg = new UserSetting(
-            'useFontInsteadOfSvg',
-            false,
-            'Font-based stroke order',
-            'Use font instead of SVG for stroke order.',
-            null,
-            0,
-            1,
-            settings.enableReplaceKanjiStrokeOrder
-        );
-        settings.enableSentenceBlur = new UserSetting(
-            'enableSentenceBlur',
-            true,
-            'Blur translations',
-            'Blur sentence translations on card back. Click to toggle.'
-        );
+        settings.enableButtonStyling = new UserSetting('enableButtonStyling', true, 'Button styling', {
+            longDescription: 'Apply custom styles to review page buttons.'
+        });
+
+        settings.enableButtonEffects = new UserSetting('enableButtonEffects', true, 'Button effects', {
+            dependency: settings.enableButtonStyling
+        });
+
+        settings.enableButtonSound = new UserSetting('enableButtonSound', true, 'Button sounds', {
+            dependency: settings.enableButtonStyling
+        });
+
+        settings.buttonSoundVolume = new UserSetting('buttonSoundVolume', 0.7, 'Button sound volume', {
+            minVal: 0,
+            maxVal: 1,
+            dependency: settings.enableButtonSound
+        });
+
+        settings.buttonSoundDelay = new UserSetting('buttonSoundDelay', -1, 'Button sound delay', {
+            longDescription: 'Set delay before redirect after sound plays. -1 for auto-detect, large negative to disable.',
+            minVal: -99999,
+            maxVal: 99999,
+            dependency: settings.enableButtonSound
+        });
+        settings.enableReplaceKanjiStrokeOrder = new UserSetting('enableReplaceKanjiStrokeOrder', true, 'KanjiVG stroke order');
+        settings.useFontInsteadOfSvg = new UserSetting('useFontInsteadOfSvg', false, 'Font-based stroke order', {
+            longDescription: 'Use font instead of SVG for stroke order.',
+            dependency: settings.enableReplaceKanjiStrokeOrder
+        });
+        settings.enableSentenceBlur = new UserSetting('enableSentenceBlur', true, 'Blur translations', {
+            longDescription: 'Blur sentence translations on card back. Click to toggle.'
+        });
         settings.enableVerticalSentence = new UserSetting('enableVerticalSentence', false, 'Vertical sentences on review cards');
         settings.searchBarOverlayTransition = new UserSetting('searchBarOverlayTransition', false, 'Search overlay animation');
         settings.alwaysShowKanjiGrid = new UserSetting('alwaysShowKanjiGrid', true, 'Always show kanji grid');
@@ -314,73 +256,62 @@
             'enableMonolingualMachineTranslation',
             true,
             'Machine translation for monolingual sentences',
-            'Shows a placeholder sentence that can be clicked to translate the sentence using JPDBs machine translation.'
+            {
+                longDescription:
+                    'Shows a placeholder sentence that can be clicked to translate the sentence using JPDBs machine translation.'
+            }
         );
-        settings.translationLanguage = new UserSetting('translation', 'None', 'Partial translation', null, Object.keys(TRANSLATIONS));
+        settings.translationLanguage = new UserSetting('translation', 'None', 'Partial translation', {
+            possibleValues: Object.keys(TRANSLATIONS)
+        });
 
         settings.showAdvancedSettings = new UserSetting('showAdvancedSettings', false, 'Show advanced settings');
         settings.advancedStaticUserButtonsOnSmallScreens = new UserSetting(
             'advancedStaticUserButtonsOnSmallScreens',
             false,
             'Static user buttons on small screens',
-            'Move the answer buttons to the bottom of the page on small screens instead of floating.'
+            {
+                longDescription: 'Move the answer buttons to the bottom of the page on small screens instead of floating.',
+                dependency: settings.showAdvancedSettings
+            }
         );
         settings.advancedYomiVocabAudioServer = new UserSetting(
             'advancedYomiVocabAudioServer',
             '',
             'Yomi vocab audio server (experimental)',
-            "A comma-separated list of URLs with '{term}' as placeholder (e.g. 'http://localhost:5050/?term={term}') that can be used to set custom audio for vocabularies.",
-            null,
-            0,
-            0,
-            settings.showAdvancedSettings,
-            true
+            {
+                longDescription:
+                    "A comma-separated list of URLs with '{term}' as placeholder (e.g. 'http://localhost:5050/?term={term}') that can be used to set custom audio for vocabularies.",
+                largeTextField: true,
+                dependency: settings.showAdvancedSettings
+            }
         );
         settings.advancedUseExperimentalThemeGenerator = new UserSetting(
             'advancedUseExperimentalThemeGenerator',
             false,
             'Use experimental theme generator',
-            '',
-            null,
-            0,
-            1,
-            settings.showAdvancedSettings
+            {
+                dependency: settings.showAdvancedSettings
+            }
         );
         settings.advancedDarkModeBackgroundColor = new UserSetting(
             'advancedDarkModeBackgroundColor',
             '#151f24',
             'Dark mode background color',
-            '',
-            null,
-            0,
-            0,
-            settings.advancedUseExperimentalThemeGenerator,
-            false,
-            true
+            {
+                dependency: settings.advancedUseExperimentalThemeGenerator,
+                colorPicker: true
+            }
         );
-        settings.advancedDarkModeContrastColor = new UserSetting(
-            'advancedDarkModeContrastColor',
-            '#00ffaa',
-            'Dark mode contrast color',
-            '',
-            null,
-            0,
-            0,
-            settings.advancedUseExperimentalThemeGenerator,
-            false,
-            true
-        );
-        settings.advancedCustomCSS = new UserSetting(
-            'advancedCustomCSS',
-            '',
-            'Custom CSS',
-            '',
-            null,
-            0,
-            0,
-            settings.showAdvancedSettings,
-            true
-        );
+        settings.advancedDarkModeContrastColor = new UserSetting('advancedDarkModeContrastColor', '#00ffaa', 'Dark mode contrast color', {
+            dependency: settings.advancedUseExperimentalThemeGenerator,
+            colorPicker: true
+        });
+        settings.advancedCustomCSS = new UserSetting('advancedCustomCSS', '', 'Custom CSS', {
+            longDescription: 'Custom CSS that will be applied to the page.',
+            largeTextField: true,
+            dependency: settings.showAdvancedSettings
+        });
 
         return settings;
     };
@@ -1901,7 +1832,7 @@
                                     },
                                     { top: Infinity, left: Infinity, right: -Infinity, bottom: -Infinity }
                                 );
-r
+                                r;
                                 rect.width = rect.right - rect.left;
                                 rect.height = rect.bottom - rect.top;
                             }
@@ -2573,7 +2504,7 @@ r
                     const shouldBeHidden = (() => {
                         if (highestDependency === null) return false;
                         if (!highestDependency()) return true;
-                        if (highestDependency() !== setting.getDependency()()) return true;
+                        if (highestDependency() !== setting.getDependency()() || !setting.getDependency()()) return true;
                         return false;
                     })();
 
@@ -2713,47 +2644,58 @@ r
                 });
 
                 // add event listener to toggle hidden class
-                for (const setting of Object.values(USER_SETTINGS)) {
+                function getDependencyChain(setting, chain = []) {
                     const dependency = setting.getDependency();
                     if (!dependency) {
-                        continue;
+                        return chain;
                     }
+                    chain.unshift(dependency);
+                    return getDependencyChain(dependency, chain);
+                }
 
-                    const dependentElement = settingsForm.querySelector(`[name="${setting.getName()}"]`);
-                    const dependencyElement = settingsForm.querySelector(`[name="${dependency.getName()}"]`);
-
-                    if (!dependentElement || !dependencyElement || dependencyElement.dataset.dependent) {
-                        continue;
+                // Build dependency relationships
+                const settingDependencies = new Map();
+                for (const setting of Object.values(USER_SETTINGS)) {
+                    if (setting.getDependency()) {
+                        settingDependencies.set(setting.getName(), getDependencyChain(setting));
                     }
+                }
 
-                    // find all elements that depend on the dependencyElement
-                    const dependentSettings = [];
-                    for (const setting of Object.values(USER_SETTINGS)) {
-                        const subDependency = setting.getDependency();
-                        if (!subDependency) {
+                // Add change listeners to all dependency elements
+                for (const [settingName, dependencyChain] of settingDependencies) {
+                    for (const dependency of dependencyChain) {
+                        const dependencyElement = settingsForm.querySelector(`[name="${dependency.getName()}"]`);
+                        if (!dependencyElement || dependencyElement.dataset.hasChangeListener) {
                             continue;
                         }
-                        if (subDependency.getName() === dependency.getName()) {
-                            dependentSettings.push(setting);
-                        }
-                    }
 
-                    dependencyElement.addEventListener('change', function () {
-                        for (const dependentSetting of dependentSettings) {
-                            const dependentElement = settingsForm.querySelector(`[name="${dependentSetting.getName()}"]`);
-                            if (dependentElement.type === 'checkbox') {
-                                dependentElement.parentElement.parentElement.classList.toggle('hidden');
-                            } else {
-                                dependentElement.parentElement.classList.toggle('hidden');
+                        dependencyElement.addEventListener('change', function () {
+                            // Check entire chain for each dependent setting
+                            for (const [depSettingName, depChain] of settingDependencies) {
+                                if (depChain.includes(dependency)) {
+                                    const depElement = settingsForm.querySelector(`[name="${depSettingName}"]`);
+
+                                    // Check if any dependency in chain is false/unchecked
+                                    const shouldHide = depChain.some((dep) => {
+                                        const depEl = settingsForm.querySelector(`[name="${dep.getName()}"]`);
+                                        return depEl && !depEl.checked;
+                                    });
+
+                                    // Toggle visibility
+                                    if (depElement.type === 'checkbox') {
+                                        depElement.parentElement.parentElement.classList.toggle('hidden', shouldHide);
+                                    } else {
+                                        depElement.parentElement.classList.toggle('hidden', shouldHide);
+                                    }
+
+                                    // Trigger change event to update downstream dependencies
+                                    depElement.dispatchEvent(new Event('change'));
+                                }
                             }
+                        });
 
-                            // trigger change event
-                            dependentElement.dispatchEvent(new Event('change'));
-                        }
-                    });
-
-                    // set value to prevent attaching event listener multiple times
-                    dependencyElement.dataset.dependent = 'true';
+                        dependencyElement.dataset.hasChangeListener = 'true';
+                    }
                 }
 
                 // Add event listener to the form submission
