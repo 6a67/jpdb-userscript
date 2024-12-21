@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.169
+// @version 0.1.170
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -1884,12 +1884,12 @@
                             if (USER_SETTINGS.enableButtonSound()) {
                                 playSound(CONFIG.soundUrlReveal);
                             }
-
-                            await new Promise((resolve) => {
-                                requestAnimationFrame(() => {
-                                    setTimeout(resolve, 25);
-                                });
-                            });
+                            
+                            // Either wait for the next frame or 100ms, whichever comes first
+                            await Promise.race([
+                                new Promise(resolve => requestAnimationFrame(resolve)),
+                                new Promise(resolve => setTimeout(resolve, 100))
+                            ]);
 
                             let rect = target.getBoundingClientRect();
 
