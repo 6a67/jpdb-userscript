@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.166
+// @version 0.1.167
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -1538,26 +1538,45 @@
         }
 
         try {
+            const lottieContainer = document.createElement('div');
+            lottieContainer.style.visibility = 'hidden';
+            lottieContainer.style.position = 'absolute';
+            document.body.appendChild(lottieContainer);
+
             const animationConfig = {
                 renderer: 'svg',
                 loop: false,
                 autoplay: false,
-                animationData: animationData
+                animationData: animationData,
+                container: lottieContainer
             };
 
-            return animationConfig;
+            const anim = lottie.loadAnimation(animationConfig);
+            lottieContainer.animation = anim;
+            anim.play();
+
+            return lottieContainer;
         } catch (error) {
             console.error('Error preparing animation:', error);
             return null;
         }
     }
 
-    // Function to play the animation
-    function playLottieAnimation(targetElement, loadedAnimation, options = {}) {
-        if (!targetElement || !loadedAnimation) {
-            console.error('Target element or loaded animation is null or undefined');
+    function playLottieAnimation(targetElement, lottieContainer, options = {}) {
+        if (!targetElement || !lottieContainer) {
+            console.error('Target element or lottie container is null or undefined');
             return null;
         }
+        console.log(lottieContainer);
+
+        const originalStyles = {
+            visibility: lottieContainer.style.visibility,
+            position: lottieContainer.style.position,
+            width: lottieContainer.style.width,
+            height: lottieContainer.style.height,
+            left: lottieContainer.style.left,
+            top: lottieContainer.style.top
+        };
 
         const defaultOptions = {
             loop: false,
@@ -1572,8 +1591,8 @@
 
         const animOptions = { ...defaultOptions, ...options };
 
-        const lottieContainer = document.createElement('div');
-        lottieContainer.style.position = 'absolute';
+        // Reset and update container styles
+        lottieContainer.style.visibility = 'visible';
         lottieContainer.style.pointerEvents = 'none';
         lottieContainer.style.display = 'flex';
         lottieContainer.style.justifyContent = 'center';
@@ -1623,7 +1642,9 @@
         if (animOptions.playBehind) {
             targetElement.parentNode.insertBefore(lottieContainer, targetElement);
         } else {
-            document.body.appendChild(lottieContainer);
+            if (lottieContainer.parentElement !== document.body) {
+                document.body.appendChild(lottieContainer);
+            }
             lottieContainer.style.position = 'fixed';
             lottieContainer.style.zIndex = '9999';
         }
@@ -1631,13 +1652,9 @@
         updatePosition();
 
         try {
-            const anim = lottie.loadAnimation({
-                ...loadedAnimation,
-                container: lottieContainer,
-                loop: animOptions.loop,
-                autoplay: animOptions.autoplay
-            });
-
+            const anim = lottieContainer.animation;
+            anim.stop();
+            anim.goToAndStop(0, true);
             anim.setSpeed(animOptions.speed);
 
             if (animOptions.playBehind) {
@@ -1646,7 +1663,10 @@
 
             anim.addEventListener('complete', () => {
                 if (!animOptions.loop) {
-                    lottieContainer.remove();
+                    // lottieContainer.remove();
+                    Object.assign(lottieContainer.style, originalStyles);
+                    lottieContainer.style.visibility = 'hidden';
+                    lottieContainer.style.position = 'absolute';
                     if (targetPosition === 'static') {
                         targetElement.style.position = '';
                     }
@@ -1664,7 +1684,7 @@
 
             return anim;
         } catch (error) {
-            console.error('Error loading animation:', error);
+            console.error('Error playing animation:', error);
             return null;
         }
     }
