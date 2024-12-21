@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.173
+// @version 0.1.174
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -998,7 +998,7 @@
         `,
 
         staticAnswerButtons: `
-            @media screen and (max-height: 600px) {
+            @media screen and (max-height: 700px) {
                 .review-button-group {
                     position: static;
                 }
@@ -1014,7 +1014,7 @@
         `,
 
         transparentBackgroundAnswerButtons: `
-            @media screen and (max-height: 600px) {
+            @media screen and (max-height: 700px) {
                 .review-button-group {
                     background-color: transparent;
                     pointer-events: none;
