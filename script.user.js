@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.168
+// @version 0.1.169
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -156,7 +156,7 @@
         },
         apiKey: GM_getValue('apiKey', ''),
         currentVersion: GM_getValue('debug_currentVersion', ''),
-        previousVersion: GM_getValue('debug_previousVersion', ''),
+        previousVersion: GM_getValue('debug_previousVersion', '')
     };
 
     let WARM = {};
@@ -1068,7 +1068,7 @@
                     display: none;
                 }
             }
-        `,
+        `
     };
 
     function log(...args) {
@@ -1567,7 +1567,6 @@
             console.error('Target element or lottie container is null or undefined');
             return null;
         }
-        console.log(lottieContainer);
 
         const originalStyles = {
             visibility: lottieContainer.style.visibility,
@@ -1886,7 +1885,7 @@
                                 playSound(CONFIG.soundUrlReveal);
                             }
 
-                            await new Promise(resolve => {
+                            await new Promise((resolve) => {
                                 requestAnimationFrame(() => {
                                     setTimeout(resolve, 25);
                                 });
@@ -3926,7 +3925,7 @@
     }
 
     function updateVersionVariables() {
-        if(STATE.currentVersion === GM_info.script.version) {
+        if (STATE.currentVersion === GM_info.script.version) {
             return;
         }
 
