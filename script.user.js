@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.174
+// @version 0.1.175
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -553,11 +553,11 @@
             
             :is(html.dark-mode) .tooltip:before {
                 background-color: #101518;
-                pointer-events: none;
             }
             
             body,
             input {
+                font-family: 'Manrope', 'Nunito Sans', 'Extra Sans JP', 'Noto Sans Symbols2', 'Segoe UI', 'Noto Sans JP', 'Noto Sans CJK JP', 'Hiragino Sans GB', 'Meiryo', sans-serif;
             }
             
             input[type='button'],
