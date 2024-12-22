@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.175
+// @version 0.1.176
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -1772,14 +1772,15 @@
                 // Create a new promise for this execution
                 STATE.warmingEffectsPromise = (async () => {
                     try {
-                        if (!WARM['smallFireworkAnimation']) {
-                            const smallFirework = CONFIG.lottieSmallFireworks[0];
-                            const smallFireworkJson = await JSON.parse(
+                        // Reveal effects
+                        if (!WARM['explosionAnimation']) {
+                            const explosion = CONFIG.lottieExplosions[0];
+                            const explosionJson = await JSON.parse(
                                 (
-                                    await httpRequest(smallFirework, 365 * 24 * 60 * 60, true, false, true)
+                                    await httpRequest(explosion, 365 * 24 * 60 * 60, true, false, true)
                                 ).responseText
                             );
-                            WARM['smallFireworkAnimation'] = loadLottieAnimation(smallFireworkJson);
+                            WARM['explosionAnimation'] = loadLottieAnimation(explosionJson);
                         }
 
                         if (!WARM['bigFireworkAnimation']) {
@@ -1791,26 +1792,29 @@
                             );
                             WARM['bigFireworkAnimation'] = loadLottieAnimation(bigFireworkJson);
                         }
+                        //
 
-                        if (!WARM['sparkleAnimation']) {
-                            const randomSparkle = CONFIG.lottieSparkles[0];
-                            const sparkleJson = await JSON.parse(
-                                (
-                                    await httpRequest(randomSparkle, 365 * 24 * 60 * 60, true, false, true)
-                                ).responseText
-                            );
-                            WARM['sparkleAnimation'] = loadLottieAnimation(sparkleJson);
-                        }
+                        void (async () => {
+                            if (!WARM['smallFireworkAnimation']) {
+                                const smallFirework = CONFIG.lottieSmallFireworks[0];
+                                const smallFireworkJson = await JSON.parse(
+                                    (
+                                        await httpRequest(smallFirework, 365 * 24 * 60 * 60, true, false, true)
+                                    ).responseText
+                                );
+                                WARM['smallFireworkAnimation'] = loadLottieAnimation(smallFireworkJson);
+                            }
 
-                        if (!WARM['explosionAnimation']) {
-                            const explosion = CONFIG.lottieExplosions[0];
-                            const explosionJson = await JSON.parse(
-                                (
-                                    await httpRequest(explosion, 365 * 24 * 60 * 60, true, false, true)
-                                ).responseText
-                            );
-                            WARM['explosionAnimation'] = loadLottieAnimation(explosionJson);
-                        }
+                            if (!WARM['sparkleAnimation']) {
+                                const randomSparkle = CONFIG.lottieSparkles[0];
+                                const sparkleJson = await JSON.parse(
+                                    (
+                                        await httpRequest(randomSparkle, 365 * 24 * 60 * 60, true, false, true)
+                                    ).responseText
+                                );
+                                WARM['sparkleAnimation'] = loadLottieAnimation(sparkleJson);
+                            }
+                        })();
                     } finally {
                         // Reset the promise when done, allowing future calls to run
                         STATE.warmingEffectsPromise = null;
