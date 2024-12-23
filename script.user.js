@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.176
+// @version 0.1.177
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -1386,11 +1386,11 @@
 
     function applyGridStyle(element) {
         if (!element) return;
-        element.style.cssText = `
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        `;
+        // element.style.cssText = `
+        //     display: grid;
+        //     grid-template-columns: repeat(2, 1fr);
+        //     gap: 10px;
+        // `;
         Array.from(element.children).forEach((child) => (child.style.margin = '0'));
     }
 
