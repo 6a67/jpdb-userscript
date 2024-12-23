@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.178
+// @version 0.1.179
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -1685,7 +1685,7 @@
                 loop: false,
                 autoplay: true,
                 renderer: 'svg',
-                size: { width: rect.height * 3, height: rect.height },
+                size: { width: Math.min(rect.height * 3, window.innerWidth), height: Math.min(rect.height, window.innerHeight) },
                 opacity: 0.5,
                 alignTop: true
             });
@@ -1693,7 +1693,7 @@
                 loop: false,
                 autoplay: true,
                 renderer: 'svg',
-                size: { width: rect.height * 3, height: rect.height },
+                size: { width: Math.min(rect.height * 3, window.innerWidth), height: Math.min(rect.height, window.innerHeight) },
                 opacity: 0.5,
                 alignTop: true
             });
@@ -1756,6 +1756,7 @@
                 if (USER_SETTINGS.enableButtonSound()) {
                     await playButtonSound(button);
                 }
+                return;
                 const form = button.closest('form');
                 if (form) {
                     form.submit();
@@ -1880,7 +1881,10 @@
                                 autoplay: true,
                                 renderer: 'svg',
                                 speed: 1.5,
-                                size: { width: rect.width, height: rect.height },
+                                size: {
+                                    width: Math.min(rect.height, window.innerWidth),
+                                    height: Math.min(rect.height, window.innerHeight)
+                                },
                                 opacity: 0.5,
                                 alignTop: true
                             });
@@ -1889,7 +1893,10 @@
                                 autoplay: true,
                                 renderer: 'svg',
                                 speed: 1.5,
-                                size: { width: rect.width, height: rect.height },
+                                size: {
+                                    width: Math.min(rect.height, window.innerWidth),
+                                    height: Math.min(rect.height, window.innerHeight)
+                                },
                                 opacity: 0.5,
                                 alignTop: true
                             });
