@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.177
+// @version 0.1.178
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -639,9 +639,15 @@
             }
             
             div.deck-list:not(div.deck-list ~ div.deck-list) {
+                grid-template-columns: repeat(1, 1fr);
                 display: grid !important;
-                grid-template-columns: repeat(2, 1fr);
                 gap: 10px;
+            }
+
+            @media (min-width: 41rem) {
+                div.deck-list:not(div.deck-list ~ div.deck-list) {
+                    grid-template-columns: repeat(2, 1fr);
+                }
             }
 
             /* Searchbar mod */
