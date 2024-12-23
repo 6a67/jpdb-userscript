@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.180
+// @version 0.1.181
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -269,6 +269,11 @@
         });
 
         settings.showAdvancedSettings = new UserSetting('showAdvancedSettings', false, 'Show advanced settings');
+        settings.advancedShortButtonVibration = new UserSetting('advancedShortButtonVibration', false, 'Short button vibration', {
+            longDescription:
+                'Vibrate the device for a short duration when a positive button is pressed. Only works if button styling is enabled.',
+            dependency: settings.showAdvancedSettings
+        });
         settings.advancedStaticAnswerButtonsOnSmallScreens = new UserSetting(
             'advancedStaticAnswerButtonsOnSmallScreens',
             false,
@@ -1653,6 +1658,18 @@
         }
     }
 
+    function vibrateDeviceButton(button) {
+        if (!navigator.vibrate) {
+            return;
+        }
+
+        if (button.classList.contains('v1')) {
+            return;
+        }
+
+        navigator.vibrate([15]);
+    }
+
     async function playEffect(button) {
         if (button.classList.contains('v1')) {
             return;
@@ -1756,6 +1773,11 @@
                 if (USER_SETTINGS.enableButtonSound()) {
                     await playButtonSound(button);
                 }
+
+                if (USER_SETTINGS.advancedShortButtonVibration()) {
+                    vibrateDeviceButton(button);
+                }
+
                 const form = button.closest('form');
                 if (form) {
                     form.submit();
