@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.182
+// @version 0.1.183
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -289,6 +289,19 @@
             'Transparent answer buttons background on small screens',
             {
                 longDescription: 'Make the answer buttons background transparent on small screens.',
+                dependency: settings.showAdvancedSettings
+            }
+        );
+        settings.advancedPreferKanjiStrokeOrderSVGVariants = new UserSetting(
+            'advancedPreferKanjiStrokeOrderSVGVariants',
+            '',
+            'Prefer a given list of variants for KanjiVG stroke order over the default one',
+            {
+                longDescription:
+                    'Only applies, when SVG stroke order is enabled. Provide a comma-separated list of variants to prefer over the default KanjiVG stroke order. E.g. "Insatsu, Kaisho" checks first for the Insatsu variant, then the Kaisho variant, and finally the default one.<br>' +
+                    'The list is case-sensitive and the default variant is always checked last. (Length of list + 1) is the number of requests that will be made for each Kanji. It is advised to rebuild the Kanji cache after changing this setting.<br>' +
+                    'Read more about the variants <a href="https://kanjivg.tagaini.net/variants.html">here</a>.',
+                largeTextField: true,
                 dependency: settings.showAdvancedSettings
             }
         );
@@ -1207,7 +1220,7 @@
         }
 
         function handleResponse(response, source = 'Network') {
-            if (response.status !== 200) {
+            if (response.status !== 200 && !allowAnyResponseCode) {
                 throw new Error(`Requesting ${url} failed with status: ${response.status}`);
             }
             log(`Response retrieved from: ${source}`);
@@ -1999,14 +2012,38 @@
         if (!kanjiSvg || !kanjiPlain) return;
         const kanjiChar = kanjiPlain.getAttribute('href').split(/[?#]/)[0].split('/').pop();
         const kanjiUnicode = kanjiChar.codePointAt(0).toString(16).padStart(5, '0');
-        const strokeOrderUrl = `${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}/${CONFIG.strokeOrderFolder}/${kanjiUnicode}.svg`;
+
+        const strokeOrderUrls = [];
+
+        if (USER_SETTINGS.advancedPreferKanjiStrokeOrderSVGVariants()) {
+            for (const variant of USER_SETTINGS.advancedPreferKanjiStrokeOrderSVGVariants().split(',')) {
+                strokeOrderUrls.push(
+                    `${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}/${
+                        CONFIG.strokeOrderFolder
+                    }/${kanjiUnicode}-${variant.trim()}.svg`
+                );
+            }
+        }
+        strokeOrderUrls.push(`${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}/${CONFIG.strokeOrderFolder}/${kanjiUnicode}.svg`);
 
         // Store the original SVG's dimensions
         const originalClass = kanjiSvg.getAttribute('class');
 
         try {
-            const svgContent = (await httpRequest(strokeOrderUrl, 365 * 24 * 60 * 60, true, true, true)).responseText;
-            replaceSvgWithCached(svgContent);
+            const promises = strokeOrderUrls.map((url) => httpRequest(url, 365 * 24 * 60 * 60, true, true, true));
+            const responses = await Promise.all(promises);
+            let success = false;
+            for (const response of responses) {
+                if (response.status === 200) {
+                    success = true;
+                    replaceSvgWithCached(response.responseText);
+                    break;
+                }
+            }
+
+            if (!success) {
+                throw new Error('No stroke order SVG found');
+            }
         } catch (error) {
             console.error('Error fetching kanji stroke order for kanji:', kanjiChar, error);
             GM_addStyle(STYLES.hideKanjiSvgOverrideFallback);
@@ -2091,7 +2128,16 @@
         const files = await getAllFiles(CONFIG.strokeOrderRepo, CONFIG.strokeOrderFolder, CONFIG.strokeOrderBranch);
         const fileUrls = files
             .filter((file) => file.path.split('/').pop().split('.')[0].length === 5 && file.path.endsWith('.svg'))
-            .map((file) => `${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}/${file.path}`);
+            .flatMap((file) => {
+                const basePath = `${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}`;
+                const paths = [`${basePath}/${file.path}`];
+                if (USER_SETTINGS.advancedPreferKanjiStrokeOrderSVGVariants()) {
+                    for (const variant of USER_SETTINGS.advancedPreferKanjiStrokeOrderSVGVariants().split(',')) {
+                        paths.push(`${basePath}/${file.path.replace('.svg', `-${variant.trim()}.svg`)}`);
+                    }
+                }
+                return paths;
+            });
 
         const progressBar = document.getElementById('kanji-cache-progress');
         progressBar.style.display = 'grid';
@@ -2105,7 +2151,7 @@
         while (fileUrls.length > 0) {
             const urls = fileUrls.splice(0, 50);
             const batchPromises = urls.map((url) =>
-                httpRequest(url, 365 * 24 * 60 * 60, false, false, true).then(() => {
+                httpRequest(url, 365 * 24 * 60 * 60, false, true, true).then(() => {
                     count++;
                     progress.style.width = `${(count / total) * 100}%`;
                     progressText.textContent = `${count}/${total} (${((count / total) * 100).toFixed(2)}%)`;
