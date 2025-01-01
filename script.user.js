@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.184
+// @version 0.1.185
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -36,7 +36,8 @@
                 maxVal = 99999,
                 dependency = null,
                 largeTextField = false,
-                colorPicker = false
+                colorPicker = false,
+                infoOnly = false // Only show info without actual setting
             } = options;
 
             this.name = name;
@@ -49,8 +50,9 @@
             this.dependency = dependency;
             this.largeTextField = largeTextField;
             this.colorPicker = colorPicker;
+            this.infoOnly = infoOnly;
 
-            this.value = this.validateValue(GM_getValue(name, defaultValue));
+            this.value = !infoOnly ? this.validateValue(GM_getValue(name, defaultValue)) : defaultValue;
 
             return this.createSettingFunction();
         }
@@ -66,6 +68,7 @@
         getDependency = () => this.dependency;
         getLargeTextField = () => this.largeTextField;
         getColorPicker = () => this.colorPicker;
+        getInfoOnly = () => this.infoOnly;
 
         validateValue(value) {
             if (this.possibleValues && !this.possibleValues.includes(value)) {
@@ -82,6 +85,11 @@
         }
 
         setValue(newValue) {
+            if (this.infoOnly) {
+                console.warn(`Attempted to set value for info-only setting ${this.name}.`);
+                return;
+            }
+
             const validatedValue = this.validateValue(newValue);
             if (validatedValue !== this.value) {
                 this.value = validatedValue;
@@ -110,7 +118,8 @@
                 getMaxVal: this.getMaxVal,
                 getDependency: this.getDependency,
                 getLargeTextField: this.getLargeTextField,
-                getColorPicker: this.getColorPicker
+                getColorPicker: this.getColorPicker,
+                getInfoOnly: this.getInfoOnly
             });
 
             return settingFunction;
@@ -142,6 +151,7 @@
         settingsPageUrl: 'https://jpdb.io/settings',
         shownSentencePrefix: 'https://jpdb.io/edit-shown-sentence',
         editAudioPrefix: 'https://jpdb.io/edit-audio',
+        customComprehensionAnalyzerUrl: 'https://jpdb.io/custom-comprehension-analyzer',
         deckListClass: 'deck-list',
         deckListSelector: 'div.deck-list',
         newDeckListClass: 'injected-deck-list',
@@ -267,6 +277,15 @@
         settings.translationLanguage = new UserSetting('translation', 'None', 'Partial translation', {
             possibleValues: Object.keys(TRANSLATIONS)
         });
+
+        settings.customComprehensionAnalyzerInfo = new UserSetting(
+            'customComprehensionAnalyzerInfo',
+            '',
+            `Click <a href="${CONFIG.customComprehensionAnalyzerUrl}">here</a> to open the custom comprehension analyzer.`,
+            {
+                infoOnly: true
+            }
+        );
 
         settings.showAdvancedSettings = new UserSetting('showAdvancedSettings', false, 'Show advanced settings');
         settings.advancedShortButtonVibration = new UserSetting('advancedShortButtonVibration', false, 'Short button vibration', {
@@ -2022,7 +2041,9 @@
                 );
             }
         }
-        strokeOrderUrls.push(`${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}/${CONFIG.strokeOrderFolder}/${kanjiUnicode}.svg`);
+        strokeOrderUrls.push(
+            `${CONFIG.strokeOrderRawHost}/${CONFIG.strokeOrderRepo}/${CONFIG.strokeOrderBranch}/${CONFIG.strokeOrderFolder}/${kanjiUnicode}.svg`
+        );
 
         // Store the original SVG's dimensions
         const originalClass = kanjiSvg.getAttribute('class');
@@ -2634,6 +2655,19 @@
                                         .join('')}
                                 </select>
                                 ${setting.getLongDescription() ? `<p style="opacity: 0.8;">\n${setting.getLongDescription()}\n</p>` : ''}
+                            </div>
+                        `;
+                    } else if (setting.getInfoOnly()) {
+                        sectionsHTML += `
+                            <div style="margin-left: ${extraIndent};"${hiddenClass}>
+                            <p>
+                                ${setting.getShortDescription()}
+                            </p>
+                            ${
+                                setting.getLongDescription()
+                                    ? `<p style="margin-left: 2rem; opacity: 0.8;">\n${setting.getLongDescription()}\n</p>`
+                                    : ''
+                            }
                             </div>
                         `;
                     } else if (typeof setting() === 'boolean') {
@@ -4017,6 +4051,279 @@
         STATE.currentVersion = GM_info.script.version;
     }
 
+    function initCustomComprehensionAnalyzer() {
+        // Parse srt
+        function parseText(input) {
+            const srtPattern = /\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}/;
+
+            if (srtPattern.test(input)) {
+                const entries = input.trim().split('\n\n');
+                return entries
+                    .map((entry) => {
+                        const lines = entry.split('\n');
+                        return lines.slice(2).join(' ').trim();
+                    })
+                    .filter((line) => line.length > 0);
+            } else {
+                return input
+                    .split('\n')
+                    .map((line) => line.trim())
+                    .filter((line) => line.length > 0);
+            }
+        }
+
+        // Remove unwanted characters
+        function preprocessLines(lines) {
+            const pattern = new RegExp(
+                '^♪♪(.|\\n)*|(.|\\n)*♪♪$|^([(（]([^()（）]|(([(（][^()（）]+[)）])))+[)）])$|^\\[.*\\]$|^♪〜.*|^♪♪.*|.*〜♪|.*～♪|^♪～.*$|\\([^)]*\\)|（.*?）|^♬～.*|《[^》]*》|[（）＜＞]|[→➡]+|♬～|♬♬|～♬|♪～|～♪|♪♪|♪♪～|～♪♪|♬♬～|～♬♬|♪〜|〜♪'
+            );
+            let result = [];
+            for (let line of lines) {
+                line = line.replace(/\\N/g, '\n');
+                line = line.replace(pattern, '').trim();
+                if (line) {
+                    result.push(line);
+                }
+            }
+            return result;
+        }
+
+        function countOccurrences(response) {
+            const vocabList = response.vocabulary;
+            const result = {};
+            for (let v of vocabList) {
+                const key = `${v[0]}-${v[1]}`;
+                result[key] = {
+                    spelling: v[3],
+                    reading: v[4],
+                    card_level: v[5],
+                    card_state: v[6],
+                    count: 0
+                };
+            }
+            for (let t of response.tokens) {
+                const vocabIndex = t[0];
+                const vocab = vocabList[vocabIndex];
+                const key = `${vocab[0]}-${vocab[1]}`;
+                result[key].count++;
+            }
+            return result;
+        }
+
+        function mergeOccurrences(occ1, occ2) {
+            for (const key in occ2) {
+                if (occ1[key]) {
+                    occ1[key].count += occ2[key].count;
+                } else {
+                    occ1[key] = occ2[key];
+                }
+            }
+            return occ1;
+        }
+
+        function createStats(occurrences) {
+            const vals = Object.values(occurrences);
+            const totalOccurrences = vals.reduce((sum, v) => sum + v.count, 0);
+            const totalNoBlacklist = vals.filter((v) => !(v.card_state || []).includes('blacklisted')).reduce((sum, v) => sum + v.count, 0);
+            const comprehensionSet = vals.filter(
+                (v) =>
+                    (v.card_state || []).includes('known') ||
+                    (v.card_state || []).includes('never-forget') ||
+                    (v.card_state || []).includes('blacklisted')
+            );
+            const comprehensionN = comprehensionSet.reduce((sum, v) => sum + v.count, 0);
+
+            let comprehensionRate = totalOccurrences > 0 ? comprehensionN / totalOccurrences : 0;
+            const compNoBlacklistSet = vals.filter(
+                (v) => (v.card_state || []).includes('known') || (v.card_state || []).includes('never-forget')
+            );
+            const compNoBlacklistN = compNoBlacklistSet.reduce((sum, v) => sum + v.count, 0);
+            let compNoBlacklistRate = totalNoBlacklist > 0 ? compNoBlacklistN / totalNoBlacklist : 0;
+
+            return {
+                total_occurrences: totalOccurrences,
+                total_occurrences_excluding_blacklist: totalNoBlacklist,
+                comprehension: comprehensionRate,
+                comprehension_excluding_blacklist: compNoBlacklistRate,
+                unique_words: vals.length,
+                unique_words_excluding_blacklist: vals.filter((v) => !(v.card_state || []).includes('blacklisted')).length
+            };
+        }
+
+        async function analyzeBatch(lines) {
+            const text = lines.join('\n');
+            const body = {
+                text: text,
+                token_fields: ['vocabulary_index'],
+                vocabulary_fields: ['vid', 'sid', 'rid', 'spelling', 'reading', 'card_level', 'card_state']
+            };
+            const response = await apiRequest('/parse', body);
+            return countOccurrences(response);
+        }
+
+        async function analyzeSubtitle(lines) {
+            const BATCH_LIMIT = 3000;
+            let batches = [];
+            let batch = [];
+            let length = 0;
+
+            lines.forEach((line) => {
+                const L = line.length;
+                if (length + L > BATCH_LIMIT) {
+                    batches.push(batch);
+                    batch = [];
+                    length = 0;
+                }
+                batch.push(line);
+                length += L;
+            });
+            if (batch.length) batches.push(batch);
+
+            let finalOccurrences = {};
+            let batchesRemaining = batches.length;
+            for (let b of batches) {
+                const occ = await analyzeBatch(b);
+                finalOccurrences = mergeOccurrences(finalOccurrences, occ);
+                batchesRemaining--;
+                if (batchesRemaining > 0) {
+                    await new Promise((resolve) => setTimeout(resolve, 1000));
+                }
+            }
+            return finalOccurrences;
+        }
+
+        async function analyzeInput(toAnalyze) {
+            const url = new URL(window.location.href);
+            url.pathname += '/results';
+            window.history.pushState({}, '', url);
+
+            const container = document.querySelector('.container');
+            if (container) {
+                container.innerHTML = 'Analyzing...';
+            }
+
+            function appendStats(name, stats) {
+                if (container.innerHTML === 'Analyzing...') {
+                    container.innerHTML = '';
+                }
+
+                const heading = document.createElement('h4');
+                heading.textContent = name;
+                container.appendChild(heading);
+
+                const statsDiv = document.createElement('div');
+                statsDiv.style.marginBottom = '1rem';
+                statsDiv.textContent = `Comprehension: ${Math.round(stats.comprehension_excluding_blacklist * 100)}%`;
+                container.appendChild(statsDiv);
+            }
+
+            toAnalyze.sort((a, b) => a[0].localeCompare(b[0]));
+            let combinedOcc = {};
+            let toAnalyzeRemaining = toAnalyze.length;
+            for (let [name, text] of toAnalyze) {
+                const lines = preprocessLines(parseText(text));
+                const occurrences = await analyzeSubtitle(lines);
+                combinedOcc = mergeOccurrences(combinedOcc, occurrences);
+
+                const stats = createStats(occurrences);
+                appendStats(name, stats);
+
+                toAnalyzeRemaining--;
+                if (toAnalyzeRemaining > 0) {
+                    await new Promise((resolve) => setTimeout(resolve, 1000));
+                }
+            }
+
+            if (toAnalyze.length > 1) {
+                const combinedStats = createStats(combinedOcc);
+                appendStats('Combined', combinedStats);
+            }
+        }
+
+        const container = document.querySelector('.container');
+        if (!container) return;
+        document.title = 'Custom Comprehension Analyzer';
+        container.innerHTML = '';
+
+        const heading = document.createElement('h4');
+        heading.textContent = 'Custom Comprehension Analyzer';
+        container.appendChild(heading);
+
+        const subheading = document.createElement('p');
+        subheading.textContent = `This is a custom comprehension analyzer injected by ${GM_info.script.name}.`;
+        container.appendChild(subheading);
+
+        const description = document.createElement('p');
+        description.textContent = 'Input raw text or the contents of an .srt file into the text box or using the file input below.';
+        container.appendChild(description);
+
+        const form = document.createElement('form');
+        form.style.display = 'inline';
+        form.innerHTML = `
+            <label class="standalone-label" for="text"><h5>Text to analyze</h5></label>
+            <div class="style-textarea-handle">
+                <textarea required name="text" spellcheck="false" placeholder="Paste your Japanese text here..." style="height: 20rem;"></textarea>
+            </div>
+            <input type="submit" value="Analyze" class="outline" style="display: block;">
+        `;
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = e.target.text.value;
+            console.log(text);
+            analyzeInput([['Text', text]]);
+        });
+        container.appendChild(form);
+
+        const fileInputForm = document.createElement('form');
+        fileInputForm.style.display = 'inline';
+        fileInputForm.innerHTML = `
+                    <label class="standalone-label" for="file"><h5>File input</h5></label>
+                    <label id="select-file-input-label" for="select-file-input" class="outline" style="margin-left: 0.5rem;">Select file...</label>
+                    <input type="file" name="file" id="select-file-input" style="display: none;" multiple>
+                    <div id="selected-files" style="margin: 0.5rem 0;"></div>
+                    <input type="submit" value="Analyze" class="outline" style="display: block;">
+                `;
+
+        fileInputForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const files = e.target.file.files;
+            const readPromises = [];
+            const toAnalyze = [];
+
+            for (const file of files) {
+                const promise = new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const text = e.target.result;
+                        toAnalyze.push([file.name, text]);
+                        resolve();
+                    };
+                    reader.readAsText(file);
+                });
+                readPromises.push(promise);
+            }
+
+            await Promise.all(readPromises);
+            analyzeInput(toAnalyze);
+        });
+        container.appendChild(fileInputForm);
+
+        const fileInput = document.getElementById('select-file-input');
+        const fileLabel = document.getElementById('select-file-input-label');
+        const selectedFilesDiv = document.getElementById('selected-files');
+
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                fileLabel.textContent = `${files.length} file(s) selected`;
+                selectedFilesDiv.innerHTML = `<div>${files.map((f) => f.name).join(', ')}</div>`;
+            } else {
+                fileLabel.textContent = 'Select file...';
+                selectedFilesDiv.innerHTML = '';
+            }
+        });
+    }
+
     function init() {
         injectFont();
         applyStyles();
@@ -4087,6 +4394,10 @@
 
         if (window.location.href.startsWith(CONFIG.editAudioPrefix) && USER_SETTINGS.advancedYomiVocabAudioServer()) {
             yomiCustomVocabAudio();
+        }
+
+        if (window.location.href === CONFIG.customComprehensionAnalyzerUrl) {
+            initCustomComprehensionAnalyzer();
         }
 
         updateVersionVariables();
