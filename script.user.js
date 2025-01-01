@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.183
+// @version 0.1.184
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -1271,8 +1271,6 @@
         if (!STATE.apiKey) {
             await parseApiKey();
         }
-
-        console.log(STATE.apiKey);
 
         const headers = {
             'Authorization': `Bearer ${STATE.apiKey}`,
