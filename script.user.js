@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.185
+// @version 0.1.186
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -13,6 +13,7 @@
 // @grant GM_deleteValue
 // @connect github.com
 // @run-at document-start
+// @inject-into page
 // @require https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js
 // @require https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js
 // @updateURL https://raw.githubusercontent.com/6a67/jpdb-userscript/main/script.user.js
