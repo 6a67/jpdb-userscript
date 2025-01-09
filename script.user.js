@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.187
+// @version 0.1.188
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -592,6 +592,17 @@
             :is(html.dark-mode) .tooltip:before {
                 background-color: #101518;
             }
+
+            /* 
+            .nav-logo a {
+                font-family: feather, 'Manrope', 'Nunito Sans', 'Extra Sans JP', 'Noto Sans Symbols2', 'Segoe UI', 'Noto Sans JP', 'Noto Sans CJK JP', 'Hiragino Sans GB', 'Meiryo', sans-serif;
+            }
+
+            .nav-logo span {
+                font-family: din-round, 'Manrope', 'Nunito Sans', 'Extra Sans JP', 'Noto Sans Symbols2', 'Segoe UI', 'Noto Sans JP', 'Noto Sans CJK JP', 'Hiragino Sans GB', 'Meiryo', sans-serif;
+                font-weight: 500;
+            }
+            */
             
             body,
             input {
@@ -1424,6 +1435,22 @@
                 `);
             }
         }
+
+        // GM_addStyle(`
+        //     @font-face {
+        //         font-family: feather;
+        //         font-style: normal;
+        //         font-weight: 700;
+        //         src: url("https://files.catbox.moe/ikbgba.otf") format("opentype")
+        //     }
+
+        //     @font-face {
+        //         font-family: din-round;
+        //         font-style: normal;
+        //         font-weight: 500;
+        //         src: url("https://files.catbox.moe/kb11aa.otf") format("opentype")
+        //     }
+        // `);
     }
 
     function applyGridStyle(element) {
