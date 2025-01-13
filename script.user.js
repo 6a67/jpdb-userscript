@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.190
+// @version 0.1.191
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -856,6 +856,17 @@
             }
             .main.column input[type="submit"]:active::before {
                 opacity: 0.5;
+            }
+
+            .side-button {
+                position: absolute;
+                height: -webkit-fill-available;
+                margin-left: -2.25rem;
+                margin-top: 1.3rem;
+            }
+
+            .review-button-group .main-row {
+                max-width: 22.5rem;
             }
         `,
 
