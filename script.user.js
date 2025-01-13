@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.189
+// @version 0.1.190
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -2903,10 +2903,10 @@
     function unblurSentenceOnClick() {
         GM_addStyle(STYLES.sentenceBlur);
 
-        document.querySelectorAll('.sentence-translation').forEach((element) => {
-            element.addEventListener('click', function () {
-                element.classList.toggle('unblur');
-            });
+        document.addEventListener('click', function (event) {
+            if (event.target.classList.contains('sentence-translation')) {
+                event.target.classList.toggle('unblur');
+            }
         });
 
         document.addEventListener('keydown', function (event) {
