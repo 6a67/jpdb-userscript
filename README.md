@@ -18,11 +18,11 @@ An opinionated userscript that modifies [jpdb.io](https://jpdb.io/) to add featu
   - Applies rounded corners to various elements.
 - **Manrope Font**
   - Replaces the default font with Manrope.
-- **Custom CSS**
-  - Add your own custom CSS styles.
 - **Homepage Message Hiding**
   - Hides additional messages on the homepage to reduce clutter.
   - This also hides the Patreon message. [Please consider supporting JPDB on Patreon.](https://www.patreon.com/jpdb)
+- **Custom CSS**
+  - Add your own custom CSS styles.
 
 ### Review Page
 - **Button Styling**
