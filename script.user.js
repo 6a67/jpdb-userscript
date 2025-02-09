@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.192
+// @version 0.1.193
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -266,6 +266,15 @@
         settings.searchBarOverlayTransition = new UserSetting('searchBarOverlayTransition', false, 'Search overlay animation');
         settings.alwaysShowKanjiGrid = new UserSetting('alwaysShowKanjiGrid', true, 'Always show kanji grid');
         settings.autoExpandNavMenu = new UserSetting('autoExpandNavMenu', false, 'Auto-expand the navigation menu on review page');
+        settings.showHiddenVocabularyOnBack = new UserSetting(
+            'showHiddenVocabularyOnBack',
+            false,
+            'Show hidden vocabulary on the back of the card',
+            {
+                longDescription:
+                    'If "Enlarge the example sentence and do not show the reviewed word by itself on a separate line (when possible)" is enabled, this setting will show the hidden vocabulary on the back of the card.'
+            }
+        );
         settings.enableMonolingualMachineTranslation = new UserSetting(
             'enableMonolingualMachineTranslation',
             true,
@@ -4371,6 +4380,47 @@
         });
     }
 
+    // TODO: make sure this works for new cards
+    function initShowHiddenVocabularyOnBack() {
+        let observer = null;
+
+        function checkReviewReveal() {
+            const reviewReveal = document.querySelector('.review-reveal');
+            if (reviewReveal) {
+                const plain = reviewReveal.querySelector('.answer-box > .plain');
+                if (plain) {
+                    if (plain.style.display === 'none' || getComputedStyle(plain).display === 'none') {
+                        const currentStyle = plain.getAttribute('style') || '';
+                        const newStyle = currentStyle
+                            .split(';')
+                            .map((rule) => rule.trim())
+                            .filter((rule) => {
+                                if (rule.startsWith('display:')) {
+                                    return rule.split(':')[1].trim() !== 'none';
+                                }
+                                return rule.length > 0;
+                            })
+                            .join('; ');
+                        plain.setAttribute('style', newStyle);
+                        if (observer) {
+                            observer.disconnect();
+                            observer = null;
+                        }
+                    }
+                }
+            }
+        }
+
+        checkReviewReveal();
+
+        if (!document.querySelector('.review-reveal')) {
+            observer = new MutationObserver(() => {
+                checkReviewReveal();
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        }
+    }
+
     function init() {
         applyStyles();
         injectFont();
@@ -4412,6 +4462,10 @@
 
         if (USER_SETTINGS.autoExpandNavMenu() && window.location.href.startsWith(CONFIG.reviewPageUrlPrefix)) {
             autoExpandMenuOnReviewPage();
+        }
+
+        if (USER_SETTINGS.showHiddenVocabularyOnBack() && window.location.href.startsWith(CONFIG.reviewPageUrlPrefix)) {
+            initShowHiddenVocabularyOnBack();
         }
 
         initKanjiCopyButton();
