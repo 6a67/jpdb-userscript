@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.193
+// @version 0.1.194
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -266,6 +266,9 @@
         settings.searchBarOverlayTransition = new UserSetting('searchBarOverlayTransition', false, 'Search overlay animation');
         settings.alwaysShowKanjiGrid = new UserSetting('alwaysShowKanjiGrid', true, 'Always show kanji grid');
         settings.autoExpandNavMenu = new UserSetting('autoExpandNavMenu', false, 'Auto-expand the navigation menu on review page');
+        settings.hideLogoutButton = new UserSetting('hideLogoutButton', false, 'Hide Logout Button', {
+            longDescription: 'Hide the logout button in the navigation menu. You can logout by clicking <a href="/logout">here</a>.'
+        });
         settings.showHiddenVocabularyOnBack = new UserSetting(
             'showHiddenVocabularyOnBack',
             false,
@@ -1099,6 +1102,12 @@
                     pointer-events: auto;
                 }
             }
+        `,
+
+        hideLogoutButton: `
+            .menu a[href="/logout"] {
+                display: none;
+            }
         `
     };
 
@@ -1430,6 +1439,9 @@
         }
         if (USER_SETTINGS.advancedTransparentBackgroundAnswerButtons()) {
             GM_addStyle(STYLES.transparentBackgroundAnswerButtons);
+        }
+        if (USER_SETTINGS.hideLogoutButton()) {
+            GM_addStyle(STYLES.hideLogoutButton);
         }
     }
 
