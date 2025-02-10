@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.196
+// @version 0.1.197
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -234,40 +234,40 @@
                 text: '並び替え',
                 whitelist: 'fieldset > legend'
             },
-            'Name': {
-                text: '名前',
+            '/^Name(.*?)$/': {
+                text: '名前{1}',
                 whitelist: '.sorting-header a'
             },
-            'Characters': {
-                text: '文字数',
+            '/^Characters(.*?)$/': {
+                text: '文字数{1}',
                 whitelist: '.sorting-header a'
             },
-            'Difficulty': {
-                text: '難易度',
+            '/^Difficulty(.*?)$/': {
+                text: '難易度{1}',
                 whitelist: '.sorting-header a'
             },
-            'Word count': {
-                text: '単語数',
+            '/^Word count \\(known %\\)(.*?)$/': {
+                text: '単語数（習得済み％）{1}',
                 whitelist: '.sorting-header a'
             },
-            'Word count (known %)': {
-                text: '単語数（習得済み％）',
+            '/^Word count(.*?)$/': {
+                text: '単語数{1}',
                 whitelist: '.sorting-header a'
             },
-            'Unique vocabulary': {
-                text: '語彙の種類',
+            '/^Unique vocabulary \\(known %\\)(.*?)$/': {
+                text: '語彙の種類（習得済み％）{1}',
                 whitelist: '.sorting-header a'
             },
-            'Unique vocabulary (known %)': {
-                text: '語彙の種類（習得済み％）',
+            '/^Unique vocabulary(.*?)$/': {
+                text: '語彙の種類{1}',
                 whitelist: '.sorting-header a'
             },
-            'Unique kanji': {
-                text: '漢字の種類',
+            '/^Unique kanji(.*?)$/': {
+                text: '漢字の種類{1}',
                 whitelist: '.sorting-header a'
             },
-            'User rating': {
-                text: 'ユーザー評価',
+            '/^User rating(.*?)$/': {
+                text: 'ユーザー評価{1}',
                 whitelist: '.sorting-header a'
             },
 
