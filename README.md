@@ -21,6 +21,8 @@ An opinionated userscript that modifies [jpdb.io](https://jpdb.io/) to add featu
 - **Homepage Message Hiding**
   - Hides additional messages on the homepage to reduce clutter.
   - This also hides the Patreon message. [Please consider supporting JPDB on Patreon.](https://www.patreon.com/jpdb)
+- **Hide Logout Button**
+  - Option to hide the logout button in the navigation menu.
 - **Custom CSS**
   - Add your own custom CSS styles.
 
@@ -43,6 +45,8 @@ An opinionated userscript that modifies [jpdb.io](https://jpdb.io/) to add featu
   - Option to move answer buttons to the bottom of the page on smaller screens instead of having them float.
 - **Transparent Answer Buttons**
   - Option to make the background of the answer buttons transparent on smaller screens to see the definitions more easily.
+- **Show Hidden Vocabulary**
+  - Option to show hidden vocabulary on card backs when "Enlarge the example sentence" setting is enabled.
 
 ### Learn Page
 - **Deck List Replacement**
@@ -90,6 +94,8 @@ An opinionated userscript that modifies [jpdb.io](https://jpdb.io/) to add featu
   - Adds a custom comprehension analyzer for analyzing text or subtitle files which can be found [here](https://jpdb.io/custom-comprehension-analyzer).
 - **Short Button Vibration**
   - Very weak haptic feedback on positive review buttons on supported devices.
+- **Changelog Notifications**
+  - Receive notifications when there are new changelog entries on JPDB.
 
 
 ## Configuration
