@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.195
+// @version 0.1.196
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -227,7 +227,99 @@
                 text: '意味',
                 blacklist: 'input' // example for a blacklist
             },
-            'config.reviewButtonFontWeight': '500'
+            'config.reviewButtonFontWeight': '500',
+
+            // Sort options
+            'Sort by': {
+                text: '並び替え',
+                whitelist: 'fieldset > legend'
+            },
+            'Name': {
+                text: '名前',
+                whitelist: '.sorting-header a'
+            },
+            'Characters': {
+                text: '文字数',
+                whitelist: '.sorting-header a'
+            },
+            'Difficulty': {
+                text: '難易度',
+                whitelist: '.sorting-header a'
+            },
+            'Word count': {
+                text: '単語数',
+                whitelist: '.sorting-header a'
+            },
+            'Word count (known %)': {
+                text: '単語数（習得済み％）',
+                whitelist: '.sorting-header a'
+            },
+            'Unique vocabulary': {
+                text: '語彙の種類',
+                whitelist: '.sorting-header a'
+            },
+            'Unique vocabulary (known %)': {
+                text: '語彙の種類（習得済み％）',
+                whitelist: '.sorting-header a'
+            },
+            'Unique kanji': {
+                text: '漢字の種類',
+                whitelist: '.sorting-header a'
+            },
+            'User rating': {
+                text: 'ユーザー評価',
+                whitelist: '.sorting-header a'
+            },
+
+            // Filter options
+            'Show only': {
+                text: '絞り込み',
+                whitelist: 'fieldset > legend'
+            },
+            'Anime': {
+                text: 'アニメ',
+                whitelist: '.sorting-header a'
+            },
+            'Live action': {
+                text: 'ドラマ',
+                whitelist: '.sorting-header a'
+            },
+            'Visual novels': {
+                text: 'ビジュアルノベル',
+                whitelist: '.sorting-header a'
+            },
+            'Video games': {
+                text: 'ビデオゲーム',
+                whitelist: '.sorting-header a'
+            },
+            'Novels': {
+                text: '小説',
+                whitelist: '.sorting-header a'
+            },
+            'Web novels': {
+                text: 'ウェブ小説',
+                whitelist: '.sorting-header a'
+            },
+            'Books (non-fiction)': {
+                text: '本（ノンフィクション）',
+                whitelist: '.sorting-header a'
+            },
+            'Textbooks': {
+                text: '教科書',
+                whitelist: '.sorting-header a'
+            },
+            'YouTube videos': {
+                text: 'YouTube動画',
+                whitelist: '.sorting-header a'
+            },
+            'Audio works': {
+                text: '音声作品',
+                whitelist: '.sorting-header a'
+            },
+            'Aozora Bunko': {
+                text: '青空文庫',
+                whitelist: '.sorting-header a'
+            }
         }
     };
 
