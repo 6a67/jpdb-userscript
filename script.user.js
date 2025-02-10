@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.194
+// @version 0.1.195
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -11,6 +11,7 @@
 // @grant GM_setClipboard
 // @grant GM_listValues
 // @grant GM_deleteValue
+// @grant GM_notification
 // @connect github.com
 // @run-at document-start
 // @inject-into page
@@ -139,7 +140,9 @@
         },
         apiKey: GM_getValue('apiKey', ''),
         currentVersion: GM_getValue('debug_currentVersion', ''),
-        previousVersion: GM_getValue('debug_previousVersion', '')
+        previousVersion: GM_getValue('debug_previousVersion', ''),
+        lastChangelogCheck: GM_getValue('lastChangelogCheck', 0),
+        lastChangelogDate: GM_getValue('lastChangelogDate', 0)
     };
 
     let WARM = {};
@@ -4433,6 +4436,38 @@
         }
     }
 
+    async function fetchChangelog() {
+        const response = await fetch('https://jpdb.io/changelog');
+        const text = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        const dates = Array.from(doc.querySelectorAll('h5')).map((h5) => h5.id);
+        const latestDate = dates.sort().reverse()[0];
+        return latestDate;
+    }
+
+    async function checkChangelog() {
+        if (Date.now() - STATE.lastChangelogCheck < 24 * 60 * 60 * 1000) {
+            return;
+        }
+
+        const latestDate = await fetchChangelog();
+
+        if (STATE.lastChangelogDate && STATE.lastChangelogDate > 0 && latestDate && latestDate !== STATE.lastChangelogDate) {
+            GM_notification({
+                title: 'New JPDB Changelog',
+                text: 'There is a new changelog available on JPDB',
+                image: 'https://jpdb.io/favicon.ico',
+                onclick: () => {
+                    window.open('https://jpdb.io/changelog');
+                }
+            });
+        }
+
+        GM_setValue('lastChangelogDate', Number(latestDate));
+        GM_setValue('lastChangelogCheck', Date.now());
+    }
+
     function init() {
         applyStyles();
         injectFont();
@@ -4514,6 +4549,7 @@
         }
 
         updateVersionVariables();
+        checkChangelog();
 
         document.dispatchEvent(new CustomEvent(`${GM_info.script.name}-initialized`));
     }
