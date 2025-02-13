@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.197
+// @version 0.1.198
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -4545,7 +4545,7 @@
 
         const latestDate = await fetchChangelog();
 
-        if (STATE.lastChangelogDate && STATE.lastChangelogDate > 0 && latestDate && latestDate !== STATE.lastChangelogDate) {
+        if (STATE.lastChangelogDate && STATE.lastChangelogDate > 0 && latestDate && Number(latestDate) !== STATE.lastChangelogDate) {
             GM_notification({
                 title: 'New JPDB Changelog',
                 text: 'There is a new changelog available on JPDB',
