@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.198
+// @version 0.1.199
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -4217,6 +4217,9 @@
     function initCustomComprehensionAnalyzer() {
         // Parse srt
         function parseText(input) {
+            // Normalize line endings
+            input = input.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
             const srtPattern = /\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}/;
 
             if (srtPattern.test(input)) {
@@ -4432,7 +4435,6 @@
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const text = e.target.text.value;
-            console.log(text);
             analyzeInput([['Text', text]]);
         });
         container.appendChild(form);
