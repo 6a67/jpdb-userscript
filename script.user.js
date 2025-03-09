@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.199
+// @version 0.1.200
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -4215,13 +4215,40 @@
     }
 
     function initCustomComprehensionAnalyzer() {
-        // Parse srt
+        function parseMokuro(input) {
+            try {
+                const parsed = JSON.parse(input);
+                
+                if (!parsed.pages) {
+                    throw new Error('Invalid Mokuro JSON: "pages" key not found');
+                }
+                
+                return parsed.pages
+                    .flatMap(page => page.blocks || [])
+                    .map(block => (block.lines || [])
+                        .filter(line => line?.length > 0)
+                        .join("")
+                    )
+                    .filter(text => text.length > 0);
+                    
+            } catch (error) {
+                return [];
+            }
+        }
+
+
         function parseText(input) {
             // Normalize line endings
             input = input.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-            const srtPattern = /\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}/;
+            // Check for Mokuro JSON format
+            const mokuroEntries = parseMokuro(input);
+            if (mokuroEntries.length > 0) {
+                return mokuroEntries;
+            }
 
+            // Check for SRT format
+            const srtPattern = /\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}/;
             if (srtPattern.test(input)) {
                 const entries = input.trim().split('\n\n');
                 return entries
@@ -4230,12 +4257,12 @@
                         return lines.slice(2).join(' ').trim();
                     })
                     .filter((line) => line.length > 0);
-            } else {
-                return input
-                    .split('\n')
-                    .map((line) => line.trim())
-                    .filter((line) => line.length > 0);
             }
+        
+            return input
+                .split('\n')
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0);
         }
 
         // Remove unwanted characters
@@ -4420,7 +4447,7 @@
         container.appendChild(subheading);
 
         const description = document.createElement('p');
-        description.textContent = 'Input raw text or the contents of an .srt file into the text box or using the file input below.';
+        description.textContent = 'Input raw text, the contents of an .srt file, or a .mokuro file into the text box or use the file input below.';
         container.appendChild(description);
 
         const form = document.createElement('form');
