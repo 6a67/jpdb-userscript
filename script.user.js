@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.200
+// @version 0.1.201
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -156,6 +156,8 @@
         shownSentencePrefix: 'https://jpdb.io/edit-shown-sentence',
         editAudioPrefix: 'https://jpdb.io/edit-audio',
         customComprehensionAnalyzerUrl: 'https://jpdb.io/custom-comprehension-analyzer',
+        originalQuizUrl: 'https://jpdb.io/quiz',
+        customAudioQuizUrl: 'https://jpdb.io/custom-audio-quiz',
         deckListClass: 'deck-list',
         deckListSelector: 'div.deck-list',
         newDeckListClass: 'injected-deck-list',
@@ -4218,24 +4220,19 @@
         function parseMokuro(input) {
             try {
                 const parsed = JSON.parse(input);
-                
+
                 if (!parsed.pages) {
                     throw new Error('Invalid Mokuro JSON: "pages" key not found');
                 }
-                
+
                 return parsed.pages
-                    .flatMap(page => page.blocks || [])
-                    .map(block => (block.lines || [])
-                        .filter(line => line?.length > 0)
-                        .join("")
-                    )
-                    .filter(text => text.length > 0);
-                    
+                    .flatMap((page) => page.blocks || [])
+                    .map((block) => (block.lines || []).filter((line) => line?.length > 0).join(''))
+                    .filter((text) => text.length > 0);
             } catch (error) {
                 return [];
             }
         }
-
 
         function parseText(input) {
             // Normalize line endings
@@ -4258,7 +4255,7 @@
                     })
                     .filter((line) => line.length > 0);
             }
-        
+
             return input
                 .split('\n')
                 .map((line) => line.trim())
@@ -4447,7 +4444,8 @@
         container.appendChild(subheading);
 
         const description = document.createElement('p');
-        description.textContent = 'Input raw text, the contents of an .srt file, or a .mokuro file into the text box or use the file input below.';
+        description.textContent =
+            'Input raw text, the contents of an .srt file, or a .mokuro file into the text box or use the file input below.';
         container.appendChild(description);
 
         const form = document.createElement('form');
@@ -4589,6 +4587,1069 @@
         GM_setValue('lastChangelogCheck', Date.now());
     }
 
+    function romajiToHiragana(romaji) {
+        // Mapping of romaji to hiragana
+        const conversionMap = {
+            // Basic hiragana
+            'a': 'あ',
+            'i': 'い',
+            'u': 'う',
+            'e': 'え',
+            'o': 'お',
+            'ka': 'か',
+            'ki': 'き',
+            'ku': 'く',
+            'ke': 'け',
+            'ko': 'こ',
+            'sa': 'さ',
+            'shi': 'し',
+            'su': 'す',
+            'se': 'せ',
+            'so': 'そ',
+            'ta': 'た',
+            'chi': 'ち',
+            'tsu': 'つ',
+            'te': 'て',
+            'to': 'と',
+            'na': 'な',
+            'ni': 'に',
+            'nu': 'ぬ',
+            'ne': 'ね',
+            'no': 'の',
+            'ha': 'は',
+            'hi': 'ひ',
+            'fu': 'ふ',
+            'he': 'へ',
+            'ho': 'ほ',
+            'ma': 'ま',
+            'mi': 'み',
+            'mu': 'む',
+            'me': 'め',
+            'mo': 'も',
+            'ya': 'や',
+            'yu': 'ゆ',
+            'yo': 'よ',
+            'ra': 'ら',
+            'ri': 'り',
+            'ru': 'る',
+            're': 'れ',
+            'ro': 'ろ',
+            'wa': 'わ',
+            'wo': 'を',
+            'n': 'ん',
+
+            // Dakuten (voiced) hiragana
+            'ga': 'が',
+            'gi': 'ぎ',
+            'gu': 'ぐ',
+            'ge': 'げ',
+            'go': 'ご',
+            'za': 'ざ',
+            'ji': 'じ',
+            'zu': 'ず',
+            'ze': 'ぜ',
+            'zo': 'ぞ',
+            'da': 'だ',
+            'di': 'ぢ',
+            'du': 'づ',
+            'de': 'で',
+            'do': 'ど',
+            'ba': 'ば',
+            'bi': 'び',
+            'bu': 'ぶ',
+            'be': 'べ',
+            'bo': 'ぼ',
+            'pa': 'ぱ',
+            'pi': 'ぴ',
+            'pu': 'ぷ',
+            'pe': 'ぺ',
+            'po': 'ぽ',
+
+            // Small ya, yu, yo combinations
+            'kya': 'きゃ',
+            'kyu': 'きゅ',
+            'kyo': 'きょ',
+            'sha': 'しゃ',
+            'shu': 'しゅ',
+            'sho': 'しょ',
+            'cha': 'ちゃ',
+            'chu': 'ちゅ',
+            'cho': 'ちょ',
+            'nya': 'にゃ',
+            'nyu': 'にゅ',
+            'nyo': 'にょ',
+            'hya': 'ひゃ',
+            'hyu': 'ひゅ',
+            'hyo': 'ひょ',
+            'mya': 'みゃ',
+            'myu': 'みゅ',
+            'myo': 'みょ',
+            'rya': 'りゃ',
+            'ryu': 'りゅ',
+            'ryo': 'りょ',
+            'gya': 'ぎゃ',
+            'gyu': 'ぎゅ',
+            'gyo': 'ぎょ',
+            'ja': 'じゃ',
+            'ju': 'じゅ',
+            'jo': 'じょ',
+            'bya': 'びゃ',
+            'byu': 'びゅ',
+            'byo': 'びょ',
+            'pya': 'ぴゃ',
+            'pyu': 'ぴゅ',
+            'pyo': 'ぴょ',
+
+            // Double consonants (small tsu)
+            'kk': 'っk',
+            'ss': 'っs',
+            'tt': 'っt',
+            'pp': 'っp',
+
+            // Special cases
+            'hu': 'ふ',
+            'si': 'し',
+            'ti': 'ち',
+            'tu': 'つ',
+            'zi': 'じ',
+            'vu': 'ゔ',
+            'wi': 'うぃ',
+            'we': 'うぇ',
+
+            // Small characters
+            'xa': 'ぁ',
+            'xi': 'ぃ',
+            'xu': 'ぅ',
+            'xe': 'ぇ',
+            'xo': 'ぉ',
+            'xya': 'ゃ',
+            'xyu': 'ゅ',
+            'xyo': 'ょ',
+            'xtsu': 'っ'
+        };
+
+        // Lowercase and normalize input
+        let input = romaji.toLowerCase();
+        let result = '';
+        let i = 0;
+
+        // Process the input character by character
+        while (i < input.length) {
+            // Check for double consonants (small tsu)
+            if (i + 1 < input.length && input[i] === input[i + 1] && 'kstp'.includes(input[i])) {
+                result += 'っ';
+                i++;
+                continue;
+            }
+
+            // Try to match the longest possible romaji sequence
+            let matched = false;
+            for (let len = 3; len > 0; len--) {
+                if (i + len <= input.length) {
+                    const substr = input.substring(i, i + len);
+                    if (conversionMap[substr]) {
+                        result += conversionMap[substr];
+                        i += len;
+                        matched = true;
+                        break;
+                    }
+                }
+            }
+
+            // If no match was found, keep the character as is
+            if (!matched) {
+                result += input[i];
+                i++;
+            }
+        }
+
+        return result;
+    }
+
+    function katakanaToHiragana(str) {
+        return str
+            .split('')
+            .map((char) => {
+                const code = char.charCodeAt(0);
+
+                // Standard conversion for most katakana (0x30A1 to 0x30F6)
+                if (code >= 0x30a1 && code <= 0x30f6) {
+                    return String.fromCharCode(code - 0x60);
+                }
+
+                // Special cases
+                switch (char) {
+                    // Extended katakana with dakuten
+                    case 'ヷ':
+                        return 'わ゛'; // wa with dakuten
+                    case 'ヸ':
+                        return 'ゐ゛'; // wi with dakuten
+                    case 'ヹ':
+                        return 'ゑ゛'; // we with dakuten
+                    case 'ヺ':
+                        return 'を゛'; // wo with dakuten
+                    case 'ヴ':
+                        return 'う゛'; // vu (u with dakuten)
+
+                    // Characters that remain unchanged
+                    case 'ヵ': // small ka
+                    case 'ヶ': // small ke
+                    case 'ー': // prolonged sound mark
+                        return char;
+
+                    // For any other character, return as is
+                    default:
+                        return char;
+                }
+            })
+            .join('');
+    }
+
+    function normalizeUserKanaInput(input) {
+        let hiragana = romajiToHiragana(input);
+        hiragana = katakanaToHiragana(hiragana);
+        return hiragana.trim();
+    }
+
+    //// Vocab Audio Quiz
+
+    /**
+     * JPDB Vocabulary Manager
+     * Fetches and manages vocabulary data from JPDB and stores it in IndexedDB
+     */
+    class JPDBVocabManager {
+        constructor() {
+            // Database name and version
+            this.DB_NAME = 'jpdb-vocab-db';
+            this.DB_VERSION = 1;
+            this.STORE_NAME = 'vocabulary';
+            this.META_STORE_NAME = 'metadata';
+
+            // Initialize database
+            this.dbPromise = this._initDatabase();
+
+            // State variables
+            this.knownVocab = [];
+
+            // Log initialization
+            console.log('JPDB Vocabulary Manager initialized');
+        }
+
+        /**
+         * Initialize the IndexedDB database
+         * @returns {Promise} Promise resolving to the database connection
+         */
+        async _initDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+
+                request.onerror = (event) => {
+                    console.error('Error opening database:', event.target.error);
+                    reject(event.target.error);
+                };
+
+                request.onsuccess = (event) => {
+                    const db = event.target.result;
+                    resolve(db);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+
+                    // Create object store for vocabulary items
+                    // Use a compound key of [spelling, reading, vid]
+                    if (!db.objectStoreNames.contains(this.STORE_NAME)) {
+                        const store = db.createObjectStore(this.STORE_NAME, { keyPath: 'id' });
+
+                        // Create indexes for searching
+                        store.createIndex('spelling', 'spelling', { unique: false });
+                        store.createIndex('reading', 'reading', { unique: false });
+                        store.createIndex('vid', 'vid', { unique: false });
+                    }
+
+                    // Create metadata store for last updated date and other metadata
+                    if (!db.objectStoreNames.contains(this.META_STORE_NAME)) {
+                        db.createObjectStore(this.META_STORE_NAME, { keyPath: 'key' });
+                    }
+                };
+            });
+        }
+
+        /**
+         * Generate a unique ID for a vocabulary item
+         * @param {Object} item Vocabulary item
+         * @returns {string} Unique ID
+         */
+        _generateItemId(item) {
+            // Create a unique ID from spelling, reading, and vid
+            return `${item.spelling}_${item.reading}_${item.vid}`;
+        }
+
+        /**
+         * Save vocabulary items to IndexedDB
+         * @param {Array} items Array of vocabulary items
+         * @returns {Promise} Promise that resolves when save is complete
+         */
+        async saveVocabulary(items) {
+            try {
+                const db = await this.dbPromise;
+                const tx = db.transaction([this.STORE_NAME, this.META_STORE_NAME], 'readwrite');
+                const store = tx.objectStore(this.STORE_NAME);
+                const metaStore = tx.objectStore(this.META_STORE_NAME);
+
+                // Clear existing data
+                await new Promise((resolve, reject) => {
+                    const clearRequest = store.clear();
+                    clearRequest.onsuccess = resolve;
+                    clearRequest.onerror = reject;
+                });
+
+                // Add new items
+                for (const item of items) {
+                    // Ensure each item has an ID for storage
+                    item.id = this._generateItemId(item);
+
+                    // Store the item
+                    await new Promise((resolve, reject) => {
+                        const addRequest = store.add(item);
+                        addRequest.onsuccess = resolve;
+                        addRequest.onerror = (event) => {
+                            console.error('Error adding item:', event.target.error);
+                            reject(event.target.error);
+                        };
+                    });
+                }
+
+                // Update last updated timestamp
+                const now = new Date();
+                await new Promise((resolve, reject) => {
+                    const updateRequest = metaStore.put({
+                        key: 'lastUpdated',
+                        value: now.toISOString(),
+                        timestamp: now.getTime()
+                    });
+                    updateRequest.onsuccess = resolve;
+                    updateRequest.onerror = reject;
+                });
+
+                // Complete transaction
+                await new Promise((resolve, reject) => {
+                    tx.oncomplete = resolve;
+                    tx.onerror = (event) => {
+                        console.error('Transaction error:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+
+                console.log(`Saved ${items.length} vocabulary items to IndexedDB`);
+                console.log(`Database last updated: ${now.toLocaleString()}`);
+                return items.length;
+            } catch (error) {
+                console.error('Error saving vocabulary:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Clear the entire database
+         * @returns {Promise} Promise that resolves when the database is cleared
+         */
+        async clearDatabase() {
+            try {
+                const db = await this.dbPromise;
+                const tx = db.transaction([this.STORE_NAME, this.META_STORE_NAME], 'readwrite');
+                const store = tx.objectStore(this.STORE_NAME);
+                const metaStore = tx.objectStore(this.META_STORE_NAME);
+
+                // Clear vocabulary data
+                await new Promise((resolve, reject) => {
+                    const clearRequest = store.clear();
+                    clearRequest.onsuccess = resolve;
+                    clearRequest.onerror = reject;
+                });
+
+                // Update last cleared timestamp
+                const now = new Date();
+                await new Promise((resolve, reject) => {
+                    const updateRequest = metaStore.put({
+                        key: 'lastCleared',
+                        value: now.toISOString(),
+                        timestamp: now.getTime()
+                    });
+                    updateRequest.onsuccess = resolve;
+                    updateRequest.onerror = reject;
+                });
+
+                // Complete transaction
+                await new Promise((resolve, reject) => {
+                    tx.oncomplete = resolve;
+                    tx.onerror = (event) => {
+                        console.error('Transaction error:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+
+                console.log(`Database cleared at ${now.toLocaleString()}`);
+                return true;
+            } catch (error) {
+                console.error('Error clearing database:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Check if the database is empty
+         * @returns {Promise<boolean>} Promise resolving to true if empty, false otherwise
+         */
+        async isDatabaseEmpty() {
+            try {
+                const db = await this.dbPromise;
+                const tx = db.transaction(this.STORE_NAME, 'readonly');
+                const store = tx.objectStore(this.STORE_NAME);
+
+                return new Promise((resolve, reject) => {
+                    // Count records in the store
+                    const countRequest = store.count();
+
+                    countRequest.onsuccess = () => {
+                        const isEmpty = countRequest.result === 0;
+                        console.log(`Database is ${isEmpty ? 'empty' : 'not empty'} (${countRequest.result} items)`);
+                        resolve(isEmpty);
+                    };
+
+                    countRequest.onerror = (event) => {
+                        console.error('Error checking if database is empty:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            } catch (error) {
+                console.error('Error checking database status:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Get the last updated date of the database
+         * @returns {Promise<string|null>} Promise resolving to the last updated date or null
+         */
+        async getLastUpdatedDate() {
+            try {
+                const db = await this.dbPromise;
+                const tx = db.transaction(this.META_STORE_NAME, 'readonly');
+                const store = tx.objectStore(this.META_STORE_NAME);
+
+                return new Promise((resolve, reject) => {
+                    const getRequest = store.get('lastUpdated');
+
+                    getRequest.onsuccess = () => {
+                        if (getRequest.result) {
+                            resolve(getRequest.result.value);
+                        } else {
+                            resolve(null);
+                        }
+                    };
+
+                    getRequest.onerror = (event) => {
+                        console.error('Error getting last updated date:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            } catch (error) {
+                console.error('Error getting last updated date:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Fetch vocabulary data from JPDB
+         * @returns {Promise} Promise resolving to an array of vocabulary items
+         */
+        async fetchVocabulary() {
+            try {
+                // Step 1: Fetch reviews
+                console.log('Fetching review data...');
+                const reviewsResponse = await httpRequest('/export/reviews.json', -1, false, false, false, true, 'json');
+
+                if (!reviewsResponse || !JSON.parse(reviewsResponse.responseText).cards_vocabulary_jp_en) {
+                    throw new Error('Failed to fetch reviews or invalid response format');
+                }
+
+                const reviews = JSON.parse(reviewsResponse.responseText);
+
+                // Step 2: Fetch blacklist and never-forget decks
+                console.log('Preparing to fetch deck vocabulary...');
+
+                // For jpdb.io direct access, we can use deck IDs directly
+                const blacklistId = 'blacklist';
+                const neverForgetId = 'never-forget';
+
+                // Step 3: Fetch vocabulary for blacklist and never-forget decks
+                console.log('Fetching deck vocabulary...');
+
+                let blacklistVocab = [];
+                if (blacklistId) {
+                    const blacklistResponse = await apiRequest('/deck/list-vocabulary', {
+                        id: blacklistId,
+                        fetch_occurences: false
+                    });
+
+                    if (!blacklistResponse || !blacklistResponse.vocabulary) {
+                        console.warn('Failed to fetch blacklist vocabulary or empty response');
+                    } else {
+                        blacklistVocab = blacklistResponse.vocabulary || [];
+                    }
+                }
+
+                const neverForgetResponse = await apiRequest('/deck/list-vocabulary', {
+                    id: neverForgetId,
+                    fetch_occurences: false
+                });
+
+                if (!neverForgetResponse || !neverForgetResponse.vocabulary) {
+                    throw new Error('Failed to fetch never-forget vocabulary or invalid response format');
+                }
+
+                const neverForgetVocab = neverForgetResponse.vocabulary || [];
+
+                // Step 4: Convert VID/SID to spelling/reading for never-forget and blacklist
+                console.log('Converting vocabulary IDs to spelling/reading...');
+
+                // Combine blacklist and never-forget vocabulary for a single API call
+                const allDeckVocab = [...neverForgetVocab];
+                if (blacklistVocab.length > 0) {
+                    allDeckVocab.push(...blacklistVocab);
+                }
+
+                // Process in batches to avoid large API requests
+                const batchSize = 500;
+                const vocabLookupMap = new Map();
+
+                for (let i = 0; i < allDeckVocab.length; i += batchSize) {
+                    const batch = allDeckVocab.slice(i, i + batchSize);
+
+                    const lookupResponse = await apiRequest('/lookup-vocabulary', {
+                        list: batch,
+                        fields: ['spelling', 'reading']
+                    });
+
+                    if (!lookupResponse || !lookupResponse.vocabulary_info) {
+                        console.warn(`Failed to look up vocabulary batch ${i}`);
+                        continue;
+                    }
+
+                    // Map VID,SID to spelling/reading
+                    lookupResponse.vocabulary_info.forEach((item, index) => {
+                        const vid = batch[index][0];
+                        const sid = batch[index][1];
+                        const key = `${vid},${sid}`;
+
+                        vocabLookupMap.set(key, {
+                            spelling: item.spelling,
+                            reading: item.reading,
+                            vid,
+                            sid
+                        });
+                    });
+
+                    console.log(`Converting vocabulary IDs... ${Math.min(i + batchSize, allDeckVocab.length)}/${allDeckVocab.length}`);
+                }
+
+                // Step 5: Process data to find known items
+                console.log('Processing vocabulary data...');
+
+                // Create sets for fast lookup
+                const blacklistSet = new Set();
+                blacklistVocab.forEach((item) => {
+                    const key = `${item[0]},${item[1]}`;
+                    blacklistSet.add(key);
+                });
+
+                // Create a map for storing data
+                const knownVocabMap = new Map();
+
+                // Process reviews (which already have spelling and reading)
+                reviews.cards_vocabulary_jp_en.forEach((card) => {
+                    const spelling = card.spelling;
+                    const reading = card.reading;
+                    const vid = card.vid;
+                    const sid = null; // Reviews might not have sid
+                    const key = `${spelling},${reading}`;
+
+                    // Skip if in blacklist (by vid,sid)
+                    const vidSidKey = `${vid},${sid}`;
+                    if (blacklistSet.has(vidSidKey)) return;
+
+                    knownVocabMap.set(key, {
+                        spelling,
+                        reading,
+                        vid,
+                        sid
+                    });
+                });
+
+                // Process never-forget
+                neverForgetVocab.forEach((item) => {
+                    const vid = item[0];
+                    const sid = item[1];
+                    const vidSidKey = `${vid},${sid}`;
+
+                    // Skip if in blacklist
+                    if (blacklistSet.has(vidSidKey)) return;
+
+                    // Get spelling/reading from lookup
+                    const vocabInfo = vocabLookupMap.get(vidSidKey);
+                    if (!vocabInfo) return; // Skip if not found in lookup
+
+                    const spelling = vocabInfo.spelling;
+                    const reading = vocabInfo.reading;
+                    const key = `${spelling},${reading}`;
+
+                    // Add or update
+                    if (knownVocabMap.has(key)) {
+                        const existingItem = knownVocabMap.get(key);
+
+                        // Store both VIDs if they're different (use an array for multiple VIDs)
+                        if (existingItem.vid !== vid) {
+                            if (!Array.isArray(existingItem.vid)) {
+                                existingItem.vid = [existingItem.vid, vid];
+                            } else if (!existingItem.vid.includes(vid)) {
+                                existingItem.vid.push(vid);
+                            }
+                        }
+                    } else {
+                        knownVocabMap.set(key, {
+                            spelling,
+                            reading,
+                            vid,
+                            sid
+                        });
+                    }
+                });
+
+                // Convert map to array
+                this.knownVocab = Array.from(knownVocabMap.values());
+
+                // Normalize VID format - convert array VIDs to just first VID for consistency in IndexedDB
+                this.knownVocab = this.knownVocab.map((item) => {
+                    if (Array.isArray(item.vid)) {
+                        return {
+                            ...item,
+                            vid: item.vid[0], // Use first VID for storage
+                            allVids: item.vid // Keep all VIDs in a separate property
+                        };
+                    }
+                    return item;
+                });
+
+                // Save to IndexedDB
+                await this.saveVocabulary(this.knownVocab);
+
+                console.log(`Successfully fetched data. Found ${this.knownVocab.length} known vocabulary items.`);
+                return this.knownVocab;
+            } catch (error) {
+                console.error(`Error fetching vocabulary: ${error}`);
+                throw error;
+            }
+        }
+
+        /**
+         * Get all vocabulary items from IndexedDB
+         * @returns {Promise} Promise resolving to an array of vocabulary items
+         */
+        async getAllVocabulary() {
+            try {
+                const db = await this.dbPromise;
+                const tx = db.transaction(this.STORE_NAME, 'readonly');
+                const store = tx.objectStore(this.STORE_NAME);
+
+                return new Promise((resolve, reject) => {
+                    const request = store.getAll();
+
+                    request.onsuccess = () => {
+                        resolve(request.result);
+                    };
+
+                    request.onerror = (event) => {
+                        console.error('Error fetching vocabulary:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            } catch (error) {
+                console.error('Error accessing vocabulary database:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Search vocabulary by spelling or reading
+         * @param {string} searchTerm Term to search for
+         * @returns {Promise} Promise resolving to an array of matching vocabulary items
+         */
+        async searchVocabulary(searchTerm) {
+            searchTerm = searchTerm.trim().toLowerCase();
+
+            if (!searchTerm) {
+                return this.getAllVocabulary();
+            }
+
+            try {
+                const allItems = await this.getAllVocabulary();
+
+                return allItems.filter(
+                    (item) =>
+                        (item.spelling && item.spelling.toLowerCase().includes(searchTerm)) ||
+                        (item.reading && item.reading.toLowerCase().includes(searchTerm))
+                );
+            } catch (error) {
+                console.error('Error searching vocabulary:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Get a random vocabulary item
+         * @returns {Promise} Promise resolving to a random vocabulary item
+         */
+        async getRandomVocabulary() {
+            try {
+                const allItems = await this.getAllVocabulary();
+
+                if (allItems.length === 0) {
+                    throw new Error('No vocabulary items found');
+                }
+
+                const randomIndex = Math.floor(Math.random() * allItems.length);
+                return allItems[randomIndex];
+            } catch (error) {
+                console.error('Error getting random vocabulary:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Export vocabulary as JSON
+         * @returns {Promise} Promise resolving to a JSON string
+         */
+        async exportVocabularyAsJson() {
+            try {
+                const allItems = await this.getAllVocabulary();
+                return JSON.stringify(allItems, null, 2);
+            } catch (error) {
+                console.error('Error exporting vocabulary:', error);
+                throw error;
+            }
+        }
+
+        async getVocabData(vid, spelling, reading) {
+            const url = `https://jpdb.io/vocabulary/${vid}/${spelling}/${reading}`;
+            const response = await httpRequest(url, 30 * 24 * 60 * 60, true, false, true, true);
+
+            // get class="icon-link vocabulary-audio"
+            const text = response.responseText;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(text, 'text/html');
+            const audioElement = doc.querySelector('.icon-link.vocabulary-audio');
+
+            // get class="subsection-meanings"
+            const meaningsElement = doc.querySelector('.subsection-meanings');
+            meaningsElement.style.textAlign = 'justify';
+
+            // get class="spelling"
+            const spellingElement = doc.querySelector('.spelling');
+            spellingElement.classList.remove('spelling');
+            spellingElement.classList.add('jp');
+
+            const vElements = spellingElement.querySelectorAll('.v');
+            vElements.forEach((el) => {
+                el.classList.remove('v');
+            });
+
+            spellingElement.style.fontSize = '225%';
+            spellingElement.style.textAlign = 'center';
+
+            return {
+                audioElement,
+                meaningsElement,
+                spellingElement
+            };
+        }
+    }
+
+    async function showLinkToAudioQuiz() {
+        const container = document.querySelector('.container');
+        if (!container) return;
+
+        const startQuizButton = container.querySelector('input[value="Start quiz"]');
+        if (!startQuizButton) return;
+
+        const ref = `<p>Click <a href=${CONFIG.customAudioQuizUrl}>here</a> to get to the audio quiz injected by ${GM_info.script.name}</p>`;
+
+        container.insertAdjacentHTML('beforeend', ref);
+    }
+
+    async function initCustomAudioQuiz() {
+        // Initialize vocabulary manager
+        const vocabManager = new JPDBVocabManager();
+
+        function addReloadButton() {
+            // Remove existing button if present
+            const existingButton = document.getElementById('reload-vocab-button');
+            if (existingButton) existingButton.remove();
+
+            // Create the button container
+            const reloadButton = document.createElement('div');
+            reloadButton.id = 'reload-vocab-button';
+            reloadButton.title = 'Reload vocabulary data';
+            reloadButton.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                background: none;
+                border: none;
+                cursor: pointer;
+                z-index: 1000;
+                padding: 5px;
+                border-radius: 50%;
+                transition: background-color 0.2s;
+                opacity: 0.05;
+            `;
+
+            // Add the SVG icon
+            reloadButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#e3e3e3">
+                    <path d="M0 0h24v24H0V0z" fill="none"/>
+                    <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                </svg>
+            `;
+
+            // Add click handler
+            reloadButton.addEventListener('click', async () => {
+                showLoadingOverlay('Reloading vocabulary data...');
+                try {
+                    await vocabManager.fetchVocabulary();
+                    hideLoadingOverlay();
+                    // Restart the quiz
+                    createFrontCardView();
+                } catch (error) {
+                    hideLoadingOverlay();
+                    showError('Failed to reload vocabulary data');
+                    console.error('Error reloading vocabulary data:', error);
+                }
+            });
+
+            const container = document.querySelector('.container');
+            container.appendChild(reloadButton);
+        }
+
+        // Create a loading overlay
+        function showLoadingOverlay(message) {
+            // Remove existing overlay if present
+            hideLoadingOverlay();
+
+            const overlay = document.createElement('div');
+            overlay.id = 'vocab-loading-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.7);
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+                color: white;
+                font-size: 1.2rem;
+            `;
+
+            const spinner = document.createElement('div');
+            spinner.style.cssText = `
+                border: 5px solid rgba(255, 255, 255, 0.3);
+                border-top: 5px solid var(--link-color, #5392c3);
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                margin-bottom: 20px;
+                animation: spin 1s linear infinite;
+            `;
+
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `;
+            document.head.appendChild(style);
+
+            const messageEl = document.createElement('p');
+            messageEl.textContent = message;
+
+            overlay.appendChild(spinner);
+            overlay.appendChild(messageEl);
+            document.body.appendChild(overlay);
+        }
+
+        function hideLoadingOverlay() {
+            const overlay = document.getElementById('vocab-loading-overlay');
+            if (overlay) overlay.remove();
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background-color: #ff5252;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 4px;
+                z-index: 10001;
+                box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
+            `;
+            errorDiv.textContent = message;
+            document.body.appendChild(errorDiv);
+
+            setTimeout(() => {
+                errorDiv.style.opacity = '0';
+                errorDiv.style.transition = 'opacity 0.5s';
+                setTimeout(() => errorDiv.remove(), 500);
+            }, 3000);
+        }
+
+        async function createBackCardView(form, rdmVocab) {
+            form.style.display = 'none';
+
+            const answerInput = form.querySelector('input[name="answer"]');
+            const userAnswer = answerInput.value.trim();
+            const correctAnswers = [normalizeUserKanaInput(rdmVocab.reading), rdmVocab.spelling];
+            const normalizedUserAnswer = normalizeUserKanaInput(userAnswer);
+
+            // Show the vocabulary information
+            document.querySelector('#spelling').style.display = '';
+            document.querySelector('#meanings').style.display = '';
+
+            // Check if the answer is correct
+            const isCorrect = correctAnswers.some((answer) => answer === normalizedUserAnswer);
+            const responseElement = `<p style="text-align: center;">Your answer was <span style="color: ${isCorrect ? 'green' : 'red'};">${
+                isCorrect ? 'correct' : 'incorrect'
+            }</span>: "${userAnswer}"</p>`;
+            const vocabAudioContainer = document.querySelector('#vocab-audio');
+            if (vocabAudioContainer) {
+                vocabAudioContainer.insertAdjacentHTML('afterend', responseElement);
+            }
+
+            const nextForm = `
+            <form id='next-form' style="display: inline;">
+                <div style="display: flex; justify-content: flex-end;">
+                    <input type="hidden" name="quiz-type" value="guess-reading">
+                    <input type="submit" value="Next..." class="outline" style="display: block;"autofocus="">
+                </div>
+            </form>
+            `;
+
+            // Append after form
+            form.insertAdjacentHTML('afterend', nextForm);
+            const nextFormElement = document.querySelector('#next-form');
+            if (!nextFormElement) return;
+            nextFormElement.addEventListener('submit', async (event) => {
+                event.preventDefault(); // Prevent actual form submission
+                await createFrontCardView();
+            });
+
+            const nextButton = nextFormElement.querySelector('input[type="submit"]');
+            if (nextButton) {
+                nextButton.focus();
+            }
+
+            form.removeEventListener('submit', createBackCardView);
+            form.remove();
+        }
+
+        async function createFrontCardView() {
+            const container = document.querySelector('.container');
+            if (!container) return;
+            document.title = 'Custom Audio Quiz';
+
+            const rdmVocab = await vocabManager.getRandomVocabulary();
+            const vocabData = await vocabManager.getVocabData(rdmVocab.vid, rdmVocab.spelling, rdmVocab.reading);
+
+            // set ids
+            vocabData.spellingElement.id = 'spelling';
+            vocabData.meaningsElement.id = 'meanings';
+
+            vocabData.spellingElement.style.display = 'none';
+            vocabData.meaningsElement.style.display = 'none';
+
+            container.innerHTML = `
+            <div class="container bugfix">
+                <div style="text-align: center; margin-top: 1rem; margin-bottom: 2rem" id="vocab-audio">
+                    ${vocabData.audioElement?.outerHTML || ''}
+                    </div>
+                ${vocabData.spellingElement?.outerHTML || ''}
+                ${vocabData.meaningsElement?.outerHTML || ''}
+                <form id="quiz-form" style="display: inline;">
+                    <input name="answer" type="text" value="" placeholder="Type in the answer..." autocomplete="off" autofocus="" />
+                    <div style="display: flex; justify-content: flex-end">
+                        <input type="submit" value="Submit" class="outline" style="display: block" />
+                    </div>
+                </form>
+            </div>
+            `;
+
+            addReloadButton();
+
+            const form = document.querySelector('#quiz-form');
+            // Add event listener to form to prevent actual submission
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault(); // Prevent actual form submission
+                await createBackCardView(form, rdmVocab);
+            });
+
+            const answerInput = form.querySelector('input[name="answer"]');
+            if (answerInput) {
+                answerInput.focus();
+                answerInput.select();
+            }
+
+            // Send `virtual-refresh` event which attaches the audio play function to the audio element
+            document.dispatchEvent(new CustomEvent('virtual-refresh'));
+
+            // TODO: Find a (better) way to actually detect if the event listener got attached
+            setTimeout(() => {
+                const audioElement = document.querySelector('.icon-link.vocabulary-audio');
+                if (audioElement) {
+                    audioElement.click();
+                }
+            }, 100);
+        }
+
+        const isEmpty = await vocabManager.isDatabaseEmpty();
+        if (isEmpty) {
+            const container = document.querySelector('.container');
+            if (!container) return;
+            container.innerHTML = `
+            <div style="text-align: justify; margin-top: 3rem; margin-bottom: 2rem">
+                <p>Welcome to the Custom Audio Quiz! This quiz uses a local database of your vocabulary knowledge rather than live data.</p>
+                <p>To get started:</p>
+                <ol>
+                    <li>Click the reload button <span style="opacity: 0.5">⟳</span> in the top right corner to fetch and index your vocabulary data.</li>
+                    <li>Once loaded, you'll be presented with audio for words you know. Type the reading or spelling to answer.</li>
+                    <li>To update your vocabulary index at any time, simply click the reload button again.</li>
+                </ol>
+            </div>
+            `;
+            addReloadButton();
+            return;
+        }
+
+        createFrontCardView();
+    }
+
     function init() {
         applyStyles();
         injectFont();
@@ -4667,6 +5728,14 @@
 
         if (window.location.href === CONFIG.customComprehensionAnalyzerUrl) {
             initCustomComprehensionAnalyzer();
+        }
+
+        if (window.location.href === CONFIG.originalQuizUrl) {
+            showLinkToAudioQuiz();
+        }
+
+        if (window.location.href === CONFIG.customAudioQuizUrl) {
+            initCustomAudioQuiz();
         }
 
         updateVersionVariables();

@@ -92,6 +92,8 @@ An opinionated userscript that modifies [jpdb.io](https://jpdb.io/) to add featu
 ### Additional Features
 - **Custom Comprehension Analyzer**
   - Adds a custom comprehension analyzer for analyzing text or subtitle files which can be found [here](https://jpdb.io/custom-comprehension-analyzer).
+- **Custom Audio Quiz**
+  - Adds a custom audio quiz for testing your listening skills which can be found [here](https://jpdb.io/custom-audio-quiz).
 - **Short Button Vibration**
   - Very weak haptic feedback on positive review buttons on supported devices.
 - **Changelog Notifications**
