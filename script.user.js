@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.201
+// @version 0.1.202
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -5341,21 +5341,21 @@
         }
 
         async getVocabData(vid, spelling, reading) {
-            const url = `https://jpdb.io/vocabulary/${vid}/${spelling}/${reading}`;
+            const vocabRef = `/vocabulary/${vid}/${spelling}/${reading}`;
+            const url = `https://jpdb.io${vocabRef}`;
             const response = await httpRequest(url, 30 * 24 * 60 * 60, true, false, true, true);
 
-            // get class="icon-link vocabulary-audio"
             const text = response.responseText;
             const parser = new DOMParser();
             const doc = parser.parseFromString(text, 'text/html');
             const audioElement = doc.querySelector('.icon-link.vocabulary-audio');
 
-            // get class="subsection-meanings"
-            const meaningsElement = doc.querySelector('.subsection-meanings');
-            meaningsElement.style.textAlign = 'justify';
+            const meaningsElement = doc.querySelector('.subsection-meanings')?.parentElement;
+            if (meaningsElement) {
+                meaningsElement.style.textAlign = 'justify';
+            }
 
-            // get class="spelling"
-            const spellingElement = doc.querySelector('.spelling');
+            let spellingElement = doc.querySelector('.spelling');
             spellingElement.classList.remove('spelling');
             spellingElement.classList.add('jp');
 
@@ -5364,8 +5364,16 @@
                 el.classList.remove('v');
             });
 
+            const spellingLink = document.createElement('a');
+            spellingLink.href = `${vocabRef}`;
+            spellingLink.innerHTML = spellingElement.firstChild.innerHTML;
+            spellingLink.classList.add('plain');
+
+            spellingElement = document.createElement('div');
             spellingElement.style.fontSize = '225%';
-            spellingElement.style.textAlign = 'center';
+            spellingElement.style.display = 'flex';
+            spellingElement.style.justifyContent = 'center';
+            spellingElement.appendChild(spellingLink);
 
             return {
                 audioElement,
@@ -5530,7 +5538,7 @@
             const normalizedUserAnswer = normalizeUserKanaInput(userAnswer);
 
             // Show the vocabulary information
-            document.querySelector('#spelling').style.display = '';
+            document.querySelector('#spelling').style.display = 'flex';
             document.querySelector('#meanings').style.display = '';
 
             // Check if the answer is correct
@@ -5586,19 +5594,17 @@
             vocabData.meaningsElement.style.display = 'none';
 
             container.innerHTML = `
-            <div class="container bugfix">
-                <div style="text-align: center; margin-top: 1rem; margin-bottom: 2rem" id="vocab-audio">
-                    ${vocabData.audioElement?.outerHTML || ''}
-                    </div>
-                ${vocabData.spellingElement?.outerHTML || ''}
-                ${vocabData.meaningsElement?.outerHTML || ''}
-                <form id="quiz-form" style="display: inline;">
-                    <input name="answer" type="text" value="" placeholder="Type in the answer..." autocomplete="off" autofocus="" />
-                    <div style="display: flex; justify-content: flex-end">
-                        <input type="submit" value="Submit" class="outline" style="display: block" />
-                    </div>
-                </form>
-            </div>
+            <div style="text-align: center; margin-top: 1rem; margin-bottom: 2rem" id="vocab-audio">
+                ${vocabData.audioElement?.outerHTML || ''}
+                </div>
+            ${vocabData.spellingElement?.outerHTML || ''}
+            <form id="quiz-form" style="display: inline;">
+                <input name="answer" type="text" value="" placeholder="Type in the answer..." autocomplete="off" autofocus="" />
+                <div style="display: flex; justify-content: flex-end">
+                    <input type="submit" value="Submit" class="outline" style="display: block" />
+                </div>
+            </form>
+            ${vocabData.meaningsElement?.outerHTML || ''}
             `;
 
             addReloadButton();
