@@ -47,6 +47,8 @@ An opinionated userscript that modifies [jpdb.io](https://jpdb.io/) to add featu
   - Option to make the background of the answer buttons transparent on smaller screens to see the definitions more easily.
 - **Show Hidden Vocabulary**
   - Option to show hidden vocabulary on card backs when "Enlarge the example sentence" setting is enabled.
+- **Per Review Session Progress Tracking**
+  - Shows a progress bar on the review page if the number of remaining reviews is greater than or equal to the remaining reviews limit.
 
 ### Learn Page
 - **Deck List Replacement**

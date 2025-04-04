@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.202
+// @version 0.1.203
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -142,7 +142,11 @@
         currentVersion: GM_getValue('debug_currentVersion', ''),
         previousVersion: GM_getValue('debug_previousVersion', ''),
         lastChangelogCheck: GM_getValue('lastChangelogCheck', 0),
-        lastChangelogDate: GM_getValue('lastChangelogDate', 0)
+        lastChangelogDate: GM_getValue('lastChangelogDate', 0),
+        perReviewSessionProgress: GM_getValue('perReviewSessionProgress', 0),
+        perReviewSessionLimit: GM_getValue('perReviewSessionLimit', -1),
+        perReviewSessionProgressBar: null,
+        perReviewSessionTrackedVocab: GM_getValue('perReviewSessionTrackedVocab', [])
     };
 
     let WARM = {};
@@ -398,6 +402,16 @@
         );
 
         settings.showAdvancedSettings = new UserSetting('showAdvancedSettings', false, 'Show advanced settings');
+        settings.perReviewSessionProgressTracking = new UserSetting(
+            'perReviewSessionProgressTracking',
+            false,
+            'Track progress per review session',
+            {
+                longDescription:
+                    'Shows a progress bar on the review page if the number of remaining reviews is greater than or equal to the remaining reviews limit.',
+                dependency: settings.showAdvancedSettings
+            }
+        );
         settings.advancedShortButtonVibration = new UserSetting('advancedShortButtonVibration', false, 'Short button vibration', {
             longDescription:
                 'Vibrate the device for a short duration when a positive button is pressed. Only works if button styling is enabled.',
@@ -1384,6 +1398,10 @@
             if (responseType === 'blob' && response.isBlob) {
                 response.response = base64ToBlob(response.response, response.responseHeaders['content-type']);
             }
+
+            response.cacheSource = source;
+            response.isCached = source !== 'Network';
+
             return response;
         }
 
@@ -1953,6 +1971,14 @@
                     return;
                 }
                 event.preventDefault();
+                const form = button.closest('form');
+
+                if (USER_SETTINGS.perReviewSessionProgressTracking() && !form.dataset.progressTracked) {
+                    const vocabIdInput = form.querySelector('input[name="c"]');
+                    progressTrackingProgress(vocabIdInput.value);
+                    form.dataset.progressTracked = true;
+                }
+
                 if (USER_SETTINGS.enableButtonEffects()) {
                     playEffect(button);
                 }
@@ -1965,7 +1991,6 @@
                     await playButtonSound(button);
                 }
 
-                const form = button.closest('form');
                 if (form) {
                     form.submit();
                 }
@@ -5656,6 +5681,268 @@
         createFrontCardView();
     }
 
+    function progressTrackingProgress(id) {
+        if (STATE.perReviewSessionTrackedVocab.includes(id)) return;
+
+        if (STATE.perReviewSessionProgressBar) {
+            STATE.perReviewSessionProgressBar.setProgress((STATE.perReviewSessionProgress + 1) / STATE.perReviewSessionLimit);
+        }
+        GM_setValue('perReviewSessionProgress', STATE.perReviewSessionProgress + 1);
+        GM_setValue('perReviewSessionTrackedVocab', STATE.perReviewSessionTrackedVocab.concat([id]));
+    }
+
+    async function initPerReviewSessionProgressTracking() {
+        async function attachNewSessionTracking() {
+            if (window.location.href.startsWith(CONFIG.reviewPageUrlPrefix)) return;
+
+            const newSessionForms = document.querySelectorAll('form[action="/review#a"][method="post"]');
+
+            if (newSessionForms.length === 0) return;
+
+            const settingsResponse = await httpRequest(
+                CONFIG.settingsPageUrl + '#cardsperreviewsession',
+                24 * 60 * 60,
+                true,
+                false,
+                true,
+                true
+            );
+
+            let cardsPerSession = STATE.perReviewSessionLimit;
+            if (!settingsResponse.isCached || cardsPerSession < 0) {
+                const responseText = settingsResponse.responseText;
+                const parser = new DOMParser();
+                const settingsDoc = parser.parseFromString(responseText, 'text/html');
+                const cardsPerSessionInput = settingsDoc.querySelector('#cards-per-review-session');
+                cardsPerSession = cardsPerSessionInput ? parseInt(cardsPerSessionInput.value, 10) : -1;
+            }
+
+            newSessionForms.forEach((form) => {
+                // Check if this form contains the new_session input
+                const newSessionInput = form.querySelector('input[name="new_session"][value="1"]');
+
+                if (newSessionInput && !form.dataset.sessionTracked) {
+                    form.addEventListener('submit', (event) => {
+                        event.preventDefault();
+                        GM_setValue('perReviewSessionProgress', 0);
+                        GM_setValue('perReviewSessionLimit', cardsPerSession);
+                        GM_setValue('perReviewSessionTrackedVocab', []);
+                        form.submit();
+                    });
+                }
+            });
+        }
+
+        async function attachSessionVocabProgressTracking() {
+            // Exit if not in a review session
+            if (!window.location.href.startsWith(CONFIG.reviewPageUrlPrefix)) return;
+            if (USER_SETTINGS.enableButtonStyling()) return;
+
+            // Add progress tracking to each grade submission form
+            const gradeForms = document.querySelectorAll('form[action="/review#a"]');
+            if (!gradeForms.length) return;
+
+            // Add event listeners to all grade forms
+            gradeForms.forEach((form) => {
+                // Skip if we've already attached a listener
+                if (form.dataset.progressTracked) return;
+
+                // Find the grade input and determine if this is a grade form
+                const gradeInput = form.querySelector('input[name="g"]');
+                if (!gradeInput) return;
+
+                const vocabIdInput = form.querySelector('input[name="c"]');
+
+                form.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    progressTrackingProgress(vocabIdInput.value);
+                    form.submit();
+                });
+
+                // Mark as processed
+                form.dataset.progressTracked = 'true';
+            });
+
+            // Handle dynamically added forms that might appear after DOM is loaded
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'childList') {
+                        // Look for new forms that don't have the tracking attribute
+                        const newGradeForms = document.querySelectorAll('form[action="/review#a"]:not([data-progress-tracked])');
+
+                        if (newGradeForms.length) {
+                            newGradeForms.forEach((form) => {
+                                // Verify this is a grade form
+                                const gradeInput = form.querySelector('input[name="g"]');
+                                if (!gradeInput) return;
+
+                                // Find the vocab ID input
+                                const vocabIdInput = form.querySelector('input[name="c"]');
+
+                                form.addEventListener('submit', (event) => {
+                                    event.preventDefault();
+                                    progressTrackingProgress(vocabIdInput.value);
+                                    form.submit();
+                                });
+
+                                form.dataset.progressTracked = 'true';
+                            });
+                        }
+                    }
+                });
+            });
+
+            observer.observe(document.body, { childList: true, subtree: true });
+        }
+
+        function getRemainingReviews() {
+            const learnLink = document.querySelector('.menu a.nav-item[href="/learn"]');
+
+            if (learnLink) {
+                const countSpan = learnLink.querySelector('span[style="color: red;"]');
+
+                if (countSpan) {
+                    const reviewCount = parseInt(countSpan.textContent.trim(), 10);
+                    return isNaN(reviewCount) ? -1 : reviewCount;
+                }
+            }
+
+            return -1;
+        }
+
+        function addProgressBar() {
+            if (document.getElementById('per-review-session-progress')) return;
+
+            if (!window.location.href.startsWith(CONFIG.reviewPageUrlPrefix)) return;
+            if (STATE.perReviewSessionLimit === -1 || STATE.perReviewSessionLimit === 0) return;
+            if (STATE.perReviewSessionLimit - STATE.perReviewSessionProgress <= 0) return;
+            if (getRemainingReviews() <= 0) return;
+            if (STATE.perReviewSessionLimit - STATE.perReviewSessionProgress >= getRemainingReviews()) return;
+
+            const container = document.querySelector('.container');
+            if (!container) return;
+
+            const progressContainer = document.createElement('div');
+            progressContainer.id = 'per-review-session-progress';
+            progressContainer.style.width = '100%';
+            // progressContainer.style.padding = '0 1.5rem';
+            progressContainer.style.marginBottom = '1rem';
+            progressContainer.style.display = 'flex';
+            progressContainer.style.justifyContent = 'center';
+            progressContainer.style.alignItems = 'center';
+
+            container.insertBefore(progressContainer, container.firstChild);
+
+            function createProgressBar(containerId, percentage = 0, options = {}) {
+                // Default options
+                const defaults = {
+                    width: '100%',
+                    maxWidth: '35rem',
+                    height: '30px',
+                    backgroundColor: '#37464f',
+                    barColor: '#93d333',
+                    reflectionColor: 'rgba(255, 255, 255, 0.3)'
+                };
+
+                // Merge defaults with provided options
+                const config = { ...defaults, ...options };
+
+                // Ensure percentage is between 0 and 1
+                percentage = Math.min(1, Math.max(0, percentage));
+
+                // Create container
+                const container = document.getElementById(containerId);
+                const progressContainerId = `progress-container-${Math.random().toString(36).substr(2, 9)}`;
+                const progressBarId = `progress-bar-${Math.random().toString(36).substr(2, 9)}`;
+                const reflectionId = `reflection-${Math.random().toString(36).substr(2, 9)}`;
+
+                // Create HTML
+                container.innerHTML = `
+                    <div id="${progressContainerId}" style="width: ${config.width}; max-width: ${config.maxWidth}; height: ${
+                    config.height
+                }; position: relative; border-radius: 15px; overflow: hidden; background-color: ${config.backgroundColor};">
+                        <div id="${progressBarId}" style="height: 100%; width: ${
+                    percentage * 100
+                }%; border-radius: 15px; background: linear-gradient(to right, ${config.barColor}, ${
+                    config.barColor
+                }); position: relative; transition: width 0.3s ease;">
+                            <div id="${reflectionId}" style="position: absolute; top: ${parseInt(config.height) * 0.233}px; height: ${
+                    parseInt(config.height) * 0.25
+                }px; background-color: ${config.reflectionColor}; border-radius: ${
+                    parseInt(config.height) * 0.125
+                }px; left: 24px; right: 24px; transition: opacity 0.3s ease; opacity: 0;"></div>
+                        </div>
+                    </div>
+                `;
+
+                // Handle reflection visibility
+                const progressContainer = document.getElementById(progressContainerId);
+                const reflection = document.getElementById(reflectionId);
+
+                const PADDING_PX = 24;
+                const MIN_REFLECTION_WIDTH = 24;
+
+                // Check if the progress bar is wide enough to show the reflection
+                const containerWidth = progressContainer.offsetWidth;
+                const expectedBarWidth = percentage * containerWidth;
+
+                if (expectedBarWidth > 2 * PADDING_PX + MIN_REFLECTION_WIDTH) {
+                    reflection.style.opacity = '1';
+                } else {
+                    reflection.style.opacity = '0';
+                }
+
+                // Return an object with methods to update the progress bar
+                return {
+                    setProgress: function (newPercentage) {
+                        newPercentage = Math.min(1, Math.max(0, newPercentage));
+                        const progressBar = document.getElementById(progressBarId);
+                        progressBar.style.width = `${newPercentage * 100}%`;
+
+                        // Update reflection visibility
+                        const expectedBarWidth = newPercentage * containerWidth;
+                        if (expectedBarWidth > 2 * PADDING_PX + MIN_REFLECTION_WIDTH) {
+                            reflection.style.opacity = '1';
+                        } else {
+                            reflection.style.opacity = '0';
+                        }
+                    },
+                    getElement: function () {
+                        return progressContainer;
+                    }
+                };
+            }
+
+            const progressPercent = STATE.perReviewSessionProgress / STATE.perReviewSessionLimit;
+            const progressBar = createProgressBar('per-review-session-progress', progressPercent, {
+                width: '100%',
+                maxWidth: '35rem',
+                height: '20px',
+                backgroundColor: '#37464f',
+                barColor: '#93d333',
+                reflectionColor: 'rgba(255, 255, 255, 0.3)'
+            });
+            return progressBar;
+        }
+
+        // Initialize progress tracking
+        let pbp = addProgressBar();
+        attachNewSessionTracking();
+        attachSessionVocabProgressTracking();
+
+        if (pbp) {
+            STATE.perReviewSessionProgressBar = pbp;
+        }
+
+        const observer = new MutationObserver(() => {
+            pbp = addProgressBar();
+            if (pbp) {
+                STATE.perReviewSessionProgressBar = pbp;
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
     function init() {
         applyStyles();
         injectFont();
@@ -5742,6 +6029,10 @@
 
         if (window.location.href === CONFIG.customAudioQuizUrl) {
             initCustomAudioQuiz();
+        }
+
+        if (USER_SETTINGS.perReviewSessionProgressTracking()) {
+            initPerReviewSessionProgressTracking();
         }
 
         updateVersionVariables();
