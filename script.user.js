@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.203
+// @version 0.1.204
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -5922,7 +5922,57 @@
                 barColor: '#93d333',
                 reflectionColor: 'rgba(255, 255, 255, 0.3)'
             });
+            scrollProgressBarIntoView();
             return progressBar;
+        }
+
+        async function scrollProgressBarIntoView(attempt = 0) {
+            function retry() {
+                if (attempt < 7) {
+                    setTimeout(() => scrollProgressBarIntoView(attempt + 1), 100);
+                }
+                return;
+            }
+
+            const card = document.querySelector('.review-hidden');
+            if (!card) {
+                retry();
+                return;
+            }
+
+            const progressBar = document.getElementById('per-review-session-progress');
+            if (!progressBar) {
+                retry();
+                return;
+            }
+
+            const rect = progressBar.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+            const isProgressBarInView = rect.top >= 0 && rect.bottom <= viewportHeight;
+
+            if (isProgressBarInView) {
+                retry();
+                return;
+            }
+
+            const navbar = document.querySelector('.nav.minimal');
+            if (!navbar) {
+                return;
+            }
+
+            const styles = window.getComputedStyle(navbar);
+            const paddingBottomPx = parseFloat(styles.paddingBottom);
+
+            if (isNaN(paddingBottomPx)) {
+                return;
+            }
+
+            const targetScrollTop = navbar.offsetTop + navbar.offsetHeight - paddingBottomPx;
+
+            window.scrollTo({
+                top: targetScrollTop,
+                behavior: 'instant'
+            });
         }
 
         // Initialize progress tracking
