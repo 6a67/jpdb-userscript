@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.205
+// @version 0.1.206
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -5880,7 +5880,7 @@
                 const reflection = document.getElementById(reflectionId);
 
                 const PADDING_PX = 24;
-                const MIN_REFLECTION_WIDTH = 24;
+                const MIN_REFLECTION_WIDTH = 8;
 
                 // Check if the progress bar is wide enough to show the reflection
                 const containerWidth = progressContainer.offsetWidth;
