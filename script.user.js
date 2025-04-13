@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name JPDB Userscript (6a67)
 // @namespace http://tampermonkey.net/
-// @version 0.1.204
+// @version 0.1.205
 // @description Script for JPDB that adds some styling and functionality
 // @match *://jpdb.io/*
 // @grant GM_addStyle
@@ -5870,7 +5870,7 @@
                     parseInt(config.height) * 0.25
                 }px; background-color: ${config.reflectionColor}; border-radius: ${
                     parseInt(config.height) * 0.125
-                }px; left: 24px; right: 24px; transition: opacity 0.3s ease; opacity: 0;"></div>
+                }px; left: 24px; right: 24px; opacity: 0;"></div>
                         </div>
                     </div>
                 `;
